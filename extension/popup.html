@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disparos Folha</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>📰 Disparos Folha</h1>
+    </header>
+
+    <!-- Seletor de Feed -->
+    <div class="feed-selector">
+      <label for="feed">Feed:</label>
+      <select id="feed">
+        <option value="poder">Política</option>
+        <option value="mercado">Economia</option>
+        <option value="mundo">Mundo</option>
+        <option value="cotidiano">Cotidiano</option>
+        <option value="esporte">Esporte</option>
+      </select>
+      <button id="btn-scan" class="btn btn-primary">Escanear</button>
+    </div>
+
+    <!-- Status -->
+    <div id="status" class="status hidden"></div>
+
+    <!-- Lista de Matérias -->
+    <div id="articles-section" class="hidden">
+      <div class="articles-header">
+        <span id="articles-count">0 matérias</span>
+        <button id="btn-select-all" class="btn btn-small">Selecionar todas</button>
+      </div>
+      <div id="articles-list" class="articles-list"></div>
+      <button id="btn-prepare" class="btn btn-primary btn-full" disabled>
+        Preparar selecionadas
+      </button>
+    </div>
+
+    <!-- Prévia da Mensagem -->
+    <div id="preview-section" class="hidden">
+      <div class="preview-header">
+        <span id="preview-title">Prévia da mensagem</span>
+        <span id="preview-counter">1 de 1</span>
+      </div>
+      <textarea id="preview-message" class="preview-message" rows="8"></textarea>
+      <div class="preview-actions">
+        <button id="btn-copy" class="btn btn-success">📋 Copiar</button>
+        <button id="btn-skip" class="btn btn-secondary">⏭️ Pular</button>
+        <button id="btn-back" class="btn btn-secondary">← Voltar</button>
+      </div>
+      <div id="copy-feedback" class="copy-feedback hidden">
+        ✅ Copiado! Cole no WhatsApp.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <small>Link encurtado via is.gd</small>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
