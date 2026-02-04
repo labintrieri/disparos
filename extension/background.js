@@ -187,27 +187,39 @@ function cleanUrl(url) {
 
 // === Encurtar URL ===
 async function shortenUrl(url) {
+  // Tenta TinyURL primeiro (melhor suporte a Open Graph preview)
+  try {
+    const response = await fetch(
+      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`
+    );
+
+    if (response.ok) {
+      const shortUrl = await response.text();
+      if (shortUrl.startsWith('http')) {
+        return shortUrl.trim();
+      }
+    }
+  } catch {
+    // Se TinyURL falhar, tenta is.gd
+  }
+
+  // Fallback: is.gd
   try {
     const response = await fetch(
       `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
     );
 
-    if (!response.ok) {
-      throw new Error('is.gd error');
+    if (response.ok) {
+      const shortUrl = await response.text();
+      if (shortUrl.startsWith('http')) {
+        return shortUrl.trim();
+      }
     }
-
-    const shortUrl = await response.text();
-
-    if (shortUrl.startsWith('http')) {
-      return shortUrl.trim();
-    }
-
-    throw new Error('Invalid response');
-
   } catch {
-    // Fallback: retorna URL original (sem encurtar)
-    return url;
+    // Se ambos falharem, retorna URL original
   }
+
+  return url;
 }
 
 // === Formatar Mensagem ===
