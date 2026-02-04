@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gerar Ícones</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    canvas { border: 1px solid #ccc; margin: 10px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .icons { display: flex; gap: 20px; flex-wrap: wrap; }
+    .icon-box { text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Gerar Ícones da Extensão</h1>
+  <p>Clique no botão para baixar os ícones:</p>
+
+  <button onclick="generateAndDownload()">📥 Baixar todos os ícones</button>
+
+  <h2>Preview:</h2>
+  <div class="icons">
+    <div class="icon-box">
+      <canvas id="icon16" width="16" height="16"></canvas>
+      <p>16x16</p>
+    </div>
+    <div class="icon-box">
+      <canvas id="icon48" width="48" height="48"></canvas>
+      <p>48x48</p>
+    </div>
+    <div class="icon-box">
+      <canvas id="icon128" width="128" height="128"></canvas>
+      <p>128x128</p>
+    </div>
+  </div>
+
+  <script>
+    const sizes = [16, 48, 128];
+
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#1a73e8';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.125);
+      ctx.fill();
+
+      // Newspaper icon
+      const fontSize = size * 0.5;
+      ctx.font = `${fontSize}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('📰', size/2, size/2);
+    }
+
+    function downloadCanvas(canvas, filename) {
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function generateAndDownload() {
+      sizes.forEach(size => {
+        const canvas = document.getElementById('icon' + size);
+        drawIcon(canvas, size);
+        setTimeout(() => downloadCanvas(canvas, `icon${size}.png`), size * 10);
+      });
+    }
+
+    // Desenha preview
+    sizes.forEach(size => {
+      const canvas = document.getElementById('icon' + size);
+      drawIcon(canvas, size);
+    });
+  </script>
+</body>
+</html>
