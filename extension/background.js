@@ -1,4 +1,5 @@
 // Service Worker - processa requests em background
+// Nota: Service workers não têm acesso ao DOM, então usamos regex para parsing
 
 // Escuta mensagens do popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -23,29 +24,58 @@ async function fetchFeed(feedUrl) {
     }
 
     const text = await response.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, 'text/xml');
 
-    const items = xml.querySelectorAll('item');
+    // Parsing XML com regex (service worker não tem DOMParser)
     const articles = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+    let match;
+    let count = 0;
 
-    items.forEach((item, index) => {
-      if (index >= 15) return; // Limita a 15 matérias
+    while ((match = itemRegex.exec(text)) !== null && count < 15) {
+      const itemContent = match[1];
 
-      const title = item.querySelector('title')?.textContent || '';
-      const link = item.querySelector('link')?.textContent || '';
-      const description = item.querySelector('description')?.textContent || '';
+      const title = extractTag(itemContent, 'title');
+      const link = extractTag(itemContent, 'link');
+      const description = extractTag(itemContent, 'description');
 
       if (title && link) {
         articles.push({ title, link, description });
+        count++;
       }
-    });
+    }
 
     return articles;
 
   } catch (error) {
     return { error: error.message };
   }
+}
+
+// Extrai conteúdo de uma tag XML
+function extractTag(xml, tagName) {
+  const regex = new RegExp(`<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>|<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+  const match = xml.match(regex);
+  if (match) {
+    // Retorna CDATA ou conteúdo normal
+    const content = match[1] || match[2] || '';
+    // Remove tags HTML residuais e decodifica entidades
+    return decodeHTMLEntities(content.replace(/<[^>]*>/g, '').trim());
+  }
+  return '';
+}
+
+// Decodifica entidades HTML
+function decodeHTMLEntities(text) {
+  const entities = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+  };
+  return text.replace(/&[^;]+;/g, match => entities[match] || match);
 }
 
 // === Processar Artigo ===
@@ -84,28 +114,40 @@ async function fetchArticlePage(url) {
   }
 }
 
-// === Extrair Bullets ===
+// === Extrair Bullets (usando regex, sem DOM) ===
 function extractBullets(html, fallbackDescription) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  // Tenta encontrar lista de bullets no HTML
+  // Procura por padrões comuns: <li> dentro de classes específicas
 
-  // Seletores para bullets na Folha
-  const selectors = [
-    '.c-news__subheadline li',
-    '.summary li',
-    '.bullets li',
-    '[class*="bullet"] li',
-    '[class*="linha-fina"] li',
-    'article header ul li',
+  const patterns = [
+    // Classe c-news__subheadline
+    /<[^>]*class="[^"]*c-news__subheadline[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
+    // Classe summary
+    /<[^>]*class="[^"]*summary[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
+    // Classe bullets
+    /<[^>]*class="[^"]*bullet[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
+    // Qualquer ul dentro de header de article
+    /<article[^>]*>[\s\S]*?<header[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
   ];
 
-  for (const selector of selectors) {
-    const items = doc.querySelectorAll(selector);
-    if (items.length >= 2) {
-      const bullets = Array.from(items)
-        .slice(0, 2)
-        .map(el => el.textContent.trim())
-        .filter(t => t.length > 3 && t.length < 220);
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      const listContent = match[1];
+      const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+      const bullets = [];
+      let liMatch;
+
+      while ((liMatch = liRegex.exec(listContent)) !== null && bullets.length < 2) {
+        const text = liMatch[1]
+          .replace(/<[^>]*>/g, '') // Remove HTML tags
+          .replace(/\s+/g, ' ')    // Normaliza espaços
+          .trim();
+
+        if (text.length > 3 && text.length < 220) {
+          bullets.push(decodeHTMLEntities(text));
+        }
+      }
 
       if (bullets.length >= 2) {
         return bullets;
@@ -113,7 +155,7 @@ function extractBullets(html, fallbackDescription) {
     }
   }
 
-  // Fallback: tenta extrair da descrição
+  // Fallback: tenta extrair da descrição do RSS
   if (fallbackDescription) {
     const parts = fallbackDescription
       .split(/[•·;—–]/)
