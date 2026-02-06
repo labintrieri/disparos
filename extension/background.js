@@ -187,39 +187,38 @@ function cleanUrl(url) {
 
 // === Encurtar URL ===
 async function shortenUrl(url) {
-  // Tenta TinyURL primeiro (melhor suporte a Open Graph preview)
   try {
-    const response = await fetch(
-      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`
-    );
-
-    if (response.ok) {
-      const shortUrl = await response.text();
-      if (shortUrl.startsWith('http')) {
-        return shortUrl.trim();
-      }
-    }
-  } catch {
-    // Se TinyURL falhar, tenta is.gd
-  }
-
-  // Fallback: is.gd
-  try {
+    // Usa is.gd
     const response = await fetch(
       `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
     );
 
-    if (response.ok) {
-      const shortUrl = await response.text();
-      if (shortUrl.startsWith('http')) {
-        return shortUrl.trim();
-      }
+    if (!response.ok) {
+      throw new Error('is.gd error');
     }
-  } catch {
-    // Se ambos falharem, retorna URL original
-  }
 
-  return url;
+    const shortUrl = await response.text();
+
+    if (shortUrl.startsWith('http')) {
+      const finalUrl = shortUrl.trim();
+
+      // "Aquece" o link: faz uma requisição para forçar o is.gd a
+      // carregar os metadados Open Graph da página de destino
+      try {
+        await fetch(finalUrl, { method: 'HEAD', mode: 'no-cors' });
+      } catch {
+        // Ignora erros do warmup
+      }
+
+      return finalUrl;
+    }
+
+    throw new Error('Invalid response');
+
+  } catch {
+    // Fallback: retorna URL original (sem encurtar)
+    return url;
+  }
 }
 
 // === Formatar Mensagem ===
