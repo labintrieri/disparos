@@ -132,37 +132,17 @@ function decodeHTMLEntities(text) {
 // === Processar Artigo ===
 async function processArticle(article) {
   try {
-    // 1. Abre a página em uma aba em background
-    const tab = await chrome.tabs.create({
-      url: article.link,
-      active: false // Abre em background
-    });
+    // 1. Extrai bullets da description do feed
+    const bullets = extractBulletsFromDescription(article.description);
 
-    // 2. Aguarda a página carregar
-    await waitForTabLoad(tab.id);
-
-    // 3. Injeta script para extrair os dados da página
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content-extractor.js']
-    });
-
-    // 4. Fecha a aba
-    await chrome.tabs.remove(tab.id);
-
-    // 5. Pega os dados extraídos
-    const extracted = results[0]?.result || {};
-    const bullets = extracted.bullets || [];
-    const title = extracted.title || article.title;
-
-    // 6. Limpa e adiciona UTM à URL
+    // 2. Limpa e adiciona UTM à URL
     const cleanedUrl = cleanUrl(article.link);
 
-    // 7. Encurta a URL
+    // 3. Encurta a URL
     const shortUrl = await shortenUrl(cleanedUrl);
 
-    // 8. Monta a mensagem
-    const message = formatMessage(title, bullets, shortUrl);
+    // 4. Monta a mensagem
+    const message = formatMessage(article.title, bullets, shortUrl);
 
     return { message, shortUrl };
 
@@ -171,113 +151,40 @@ async function processArticle(article) {
   }
 }
 
-// Aguarda a aba carregar completamente
-function waitForTabLoad(tabId) {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error('Timeout ao carregar página'));
-    }, 15000);
+// Extrai bullets da description do RSS
+function extractBulletsFromDescription(description) {
+  if (!description) return [];
 
-    function listener(updatedTabId, info) {
-      if (updatedTabId === tabId && info.status === 'complete') {
-        clearTimeout(timeout);
-        chrome.tabs.onUpdated.removeListener(listener);
-        // Aguarda mais um pouco para o JS da página rodar
-        setTimeout(resolve, 500);
-      }
-    }
+  // Limpa a description
+  let text = description
+    .replace(/<[^>]*>/g, '') // Remove tags HTML
+    .replace(/\s+/g, ' ')    // Normaliza espaços
+    .trim();
 
-    chrome.tabs.onUpdated.addListener(listener);
-  });
-}
+  // Tenta dividir por separadores comuns
+  // Padrão do bookmarklet: (?:•|·|;|—|–|:|\.)(?:\s+|$)
+  const parts = text
+    .split(/(?:•|·|;|—|–|\.\s)/)
+    .map(s => s.trim())
+    .filter(s => s && s.length > 10 && s.length < 200);
 
-// === Buscar Página do Artigo ===
-async function fetchArticlePage(url) {
-  try {
-    const response = await fetch(url);
-    const text = await response.text();
-    return text;
-  } catch {
-    return '';
-  }
-}
-
-// === Extrair Bullets (usando regex, sem DOM) ===
-function extractBullets(html, fallbackDescription) {
-  // Tenta encontrar lista de bullets no HTML
-  // Baseado nos seletores do bookmarklet original
-
-  // Primeiro, tenta achar <ul> com classes específicas e extrair <li>
-  const ulPatterns = [
-    // Classe summary
-    /<ul[^>]*class="[^"]*summary[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
-    // Classe bullets
-    /<ul[^>]*class="[^"]*bullets[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
-    // Classe com "bullet" no nome
-    /<ul[^>]*class="[^"]*bullet[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
-    // Classe linha-fina
-    /<ul[^>]*class="[^"]*linha-fina[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
-    // Classe c-news__subheadline (Folha)
-    /<[^>]*class="[^"]*c-news__subheadline[^"]*"[^>]*>([\s\S]*?)<\/(?:div|ul|section)>/gi,
-  ];
-
-  for (const pattern of ulPatterns) {
-    pattern.lastIndex = 0; // Reset regex
-    const match = pattern.exec(html);
-    if (match) {
-      const bullets = extractLiFromHtml(match[1] || match[0]);
-      if (bullets.length >= 2) {
-        return bullets.slice(0, 2);
-      }
-    }
+  if (parts.length >= 2) {
+    return parts.slice(0, 2);
   }
 
-  // Fallback: busca qualquer <li> dentro de <article> ou <main>
-  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-  if (articleMatch) {
-    const bullets = extractLiFromHtml(articleMatch[1]);
-    if (bullets.length >= 2) {
-      return bullets.slice(0, 2);
-    }
+  // Se não conseguiu dividir, tenta usar a description inteira como um bullet
+  // (se não for muito longa)
+  if (text.length > 10 && text.length < 200) {
+    return [text];
   }
 
-  // Fallback final: tenta extrair da descrição do RSS
-  if (fallbackDescription) {
-    const parts = fallbackDescription
-      .split(/[•·;—–]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 3 && s.length < 220);
-
-    if (parts.length >= 2) {
-      return parts.slice(0, 2);
-    }
-    if (parts.length === 1) {
-      return [parts[0]];
-    }
+  // Se for muito longa, pega as primeiras duas frases
+  const sentences = text.split(/\.\s+/);
+  if (sentences.length >= 2) {
+    return sentences.slice(0, 2).map(s => s.trim()).filter(s => s.length > 0);
   }
 
   return [];
-}
-
-// Extrai texto de tags <li>
-function extractLiFromHtml(html) {
-  const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-  const bullets = [];
-  let match;
-
-  while ((match = liRegex.exec(html)) !== null && bullets.length < 3) {
-    const text = match[1]
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/\s+/g, ' ')    // Normaliza espaços
-      .trim();
-
-    if (text.length > 3 && text.length < 220) {
-      bullets.push(decodeHTMLEntities(text));
-    }
-  }
-
-  return bullets;
 }
 
 // === Limpar URL ===

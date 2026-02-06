@@ -5,9 +5,7 @@
   "description": "Scanner de matérias da Folha de S.Paulo para WhatsApp",
   "permissions": [
     "activeTab",
-    "clipboardWrite",
-    "scripting",
-    "tabs"
+    "clipboardWrite"
   ],
   "host_permissions": [
     "https://*.folha.uol.com.br/*",
