@@ -9,7 +9,8 @@
   ],
   "host_permissions": [
     "https://*.folha.uol.com.br/*",
-    "https://is.gd/*"
+    "https://is.gd/*",
+    "https://tinyurl.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
