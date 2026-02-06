@@ -23,7 +23,19 @@ async function fetchFeed(feedUrl) {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const text = await response.text();
+    // Lê como bytes e decodifica como UTF-8 (com fallback para ISO-8859-1)
+    const buffer = await response.arrayBuffer();
+    let text;
+
+    // Tenta UTF-8 primeiro
+    try {
+      const decoder = new TextDecoder('utf-8', { fatal: true });
+      text = decoder.decode(buffer);
+    } catch {
+      // Se falhar, tenta ISO-8859-1 (Latin-1)
+      const decoder = new TextDecoder('iso-8859-1');
+      text = decoder.decode(buffer);
+    }
 
     // Parsing XML com regex (service worker não tem DOMParser)
     const articles = [];
@@ -269,7 +281,8 @@ function formatMessage(title, bullets, url) {
   }
 
   if (bullets.length > 0) {
-    parts.push(bullets.map(b => `• ${b}`).join('\n'));
+    // Bullets em itálico (usando _ do WhatsApp)
+    parts.push(bullets.map(b => `• _${b}_`).join('\n'));
   }
 
   parts.push(url);
