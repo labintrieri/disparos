@@ -66,6 +66,7 @@ function extractTag(xml, tagName) {
 
 // Decodifica entidades HTML
 function decodeHTMLEntities(text) {
+  // Entidades nomeadas comuns
   const entities = {
     '&amp;': '&',
     '&lt;': '<',
@@ -74,8 +75,46 @@ function decodeHTMLEntities(text) {
     '&#39;': "'",
     '&apos;': "'",
     '&nbsp;': ' ',
+    '&ccedil;': 'ç',
+    '&Ccedil;': 'Ç',
+    '&atilde;': 'ã',
+    '&Atilde;': 'Ã',
+    '&otilde;': 'õ',
+    '&Otilde;': 'Õ',
+    '&aacute;': 'á',
+    '&Aacute;': 'Á',
+    '&eacute;': 'é',
+    '&Eacute;': 'É',
+    '&iacute;': 'í',
+    '&Iacute;': 'Í',
+    '&oacute;': 'ó',
+    '&Oacute;': 'Ó',
+    '&uacute;': 'ú',
+    '&Uacute;': 'Ú',
+    '&acirc;': 'â',
+    '&Acirc;': 'Â',
+    '&ecirc;': 'ê',
+    '&Ecirc;': 'Ê',
+    '&ocirc;': 'ô',
+    '&Ocirc;': 'Ô',
+    '&agrave;': 'à',
+    '&Agrave;': 'À',
   };
-  return text.replace(/&[^;]+;/g, match => entities[match] || match);
+
+  // Primeiro substitui entidades nomeadas
+  let result = text.replace(/&[a-zA-Z]+;/g, match => entities[match] || match);
+
+  // Depois decodifica entidades numéricas decimais (&#123;)
+  result = result.replace(/&#(\d+);/g, (match, num) => {
+    return String.fromCharCode(parseInt(num, 10));
+  });
+
+  // Decodifica entidades numéricas hexadecimais (&#x1F;)
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+
+  return result;
 }
 
 // === Processar Artigo ===
