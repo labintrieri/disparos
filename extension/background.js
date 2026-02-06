@@ -168,45 +168,43 @@ async function fetchArticlePage(url) {
 // === Extrair Bullets (usando regex, sem DOM) ===
 function extractBullets(html, fallbackDescription) {
   // Tenta encontrar lista de bullets no HTML
-  // Procura por padrões comuns: <li> dentro de classes específicas
+  // Baseado nos seletores do bookmarklet original
 
-  const patterns = [
-    // Classe c-news__subheadline
-    /<[^>]*class="[^"]*c-news__subheadline[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
+  // Primeiro, tenta achar <ul> com classes específicas e extrair <li>
+  const ulPatterns = [
     // Classe summary
-    /<[^>]*class="[^"]*summary[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
+    /<ul[^>]*class="[^"]*summary[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
     // Classe bullets
-    /<[^>]*class="[^"]*bullet[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
-    // Qualquer ul dentro de header de article
-    /<article[^>]*>[\s\S]*?<header[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
+    /<ul[^>]*class="[^"]*bullets[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
+    // Classe com "bullet" no nome
+    /<ul[^>]*class="[^"]*bullet[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
+    // Classe linha-fina
+    /<ul[^>]*class="[^"]*linha-fina[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi,
+    // Classe c-news__subheadline (Folha)
+    /<[^>]*class="[^"]*c-news__subheadline[^"]*"[^>]*>([\s\S]*?)<\/(?:div|ul|section)>/gi,
   ];
 
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
+  for (const pattern of ulPatterns) {
+    pattern.lastIndex = 0; // Reset regex
+    const match = pattern.exec(html);
     if (match) {
-      const listContent = match[1];
-      const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-      const bullets = [];
-      let liMatch;
-
-      while ((liMatch = liRegex.exec(listContent)) !== null && bullets.length < 2) {
-        const text = liMatch[1]
-          .replace(/<[^>]*>/g, '') // Remove HTML tags
-          .replace(/\s+/g, ' ')    // Normaliza espaços
-          .trim();
-
-        if (text.length > 3 && text.length < 220) {
-          bullets.push(decodeHTMLEntities(text));
-        }
-      }
-
+      const bullets = extractLiFromHtml(match[1] || match[0]);
       if (bullets.length >= 2) {
-        return bullets;
+        return bullets.slice(0, 2);
       }
     }
   }
 
-  // Fallback: tenta extrair da descrição do RSS
+  // Fallback: busca qualquer <li> dentro de <article> ou <main>
+  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+  if (articleMatch) {
+    const bullets = extractLiFromHtml(articleMatch[1]);
+    if (bullets.length >= 2) {
+      return bullets.slice(0, 2);
+    }
+  }
+
+  // Fallback final: tenta extrair da descrição do RSS
   if (fallbackDescription) {
     const parts = fallbackDescription
       .split(/[•·;—–]/)
@@ -222,6 +220,26 @@ function extractBullets(html, fallbackDescription) {
   }
 
   return [];
+}
+
+// Extrai texto de tags <li>
+function extractLiFromHtml(html) {
+  const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+  const bullets = [];
+  let match;
+
+  while ((match = liRegex.exec(html)) !== null && bullets.length < 3) {
+    const text = match[1]
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/\s+/g, ' ')    // Normaliza espaços
+      .trim();
+
+    if (text.length > 3 && text.length < 220) {
+      bullets.push(decodeHTMLEntities(text));
+    }
+  }
+
+  return bullets;
 }
 
 // === Limpar URL ===
