@@ -132,26 +132,64 @@ function decodeHTMLEntities(text) {
 // === Processar Artigo ===
 async function processArticle(article) {
   try {
-    // 1. Busca o conteúdo da página
-    const pageContent = await fetchArticlePage(article.link);
+    // 1. Abre a página em uma aba em background
+    const tab = await chrome.tabs.create({
+      url: article.link,
+      active: false // Abre em background
+    });
 
-    // 2. Extrai bullets
-    const bullets = extractBullets(pageContent, article.description);
+    // 2. Aguarda a página carregar
+    await waitForTabLoad(tab.id);
 
-    // 3. Limpa e adiciona UTM à URL
+    // 3. Injeta script para extrair os dados da página
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content-extractor.js']
+    });
+
+    // 4. Fecha a aba
+    await chrome.tabs.remove(tab.id);
+
+    // 5. Pega os dados extraídos
+    const extracted = results[0]?.result || {};
+    const bullets = extracted.bullets || [];
+    const title = extracted.title || article.title;
+
+    // 6. Limpa e adiciona UTM à URL
     const cleanedUrl = cleanUrl(article.link);
 
-    // 4. Encurta a URL
+    // 7. Encurta a URL
     const shortUrl = await shortenUrl(cleanedUrl);
 
-    // 5. Monta a mensagem
-    const message = formatMessage(article.title, bullets, shortUrl);
+    // 8. Monta a mensagem
+    const message = formatMessage(title, bullets, shortUrl);
 
     return { message, shortUrl };
 
   } catch (error) {
     return { error: error.message };
   }
+}
+
+// Aguarda a aba carregar completamente
+function waitForTabLoad(tabId) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error('Timeout ao carregar página'));
+    }, 15000);
+
+    function listener(updatedTabId, info) {
+      if (updatedTabId === tabId && info.status === 'complete') {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+        // Aguarda mais um pouco para o JS da página rodar
+        setTimeout(resolve, 500);
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
 }
 
 // === Buscar Página do Artigo ===
