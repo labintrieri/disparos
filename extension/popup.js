@@ -155,8 +155,9 @@ async function prepareMessages() {
     .map(i => state.articles[i]);
 
   try {
-    for (const article of selectedArticles) {
-      showStatus(`⏳ Processando: ${article.title.substring(0, 30)}...`, 'loading');
+    for (let i = 0; i < selectedArticles.length; i++) {
+      const article = selectedArticles[i];
+      showStatus(`⏳ Buscando ${i + 1}/${selectedArticles.length}: ${article.title.substring(0, 30)}...`, 'loading');
 
       // Busca detalhes da matéria e encurta o link
       const result = await chrome.runtime.sendMessage({
