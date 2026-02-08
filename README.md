@@ -1,56 +1,56 @@
 # Disparos Folha
 
-Extensao para Google Chrome que automatiza a preparacao de mensagens para WhatsApp a partir de materias da Folha de S.Paulo.
+Extensão para Google Chrome que automatiza a preparação de mensagens para WhatsApp a partir de matérias da Folha de S.Paulo.
 
 ## Problema
 
-A equipe de comunicacao precisa distribuir rapidamente materias da Folha via WhatsApp. O processo manual envolve: abrir cada materia, copiar titulo, copiar subtitulos, formatar a mensagem, encurtar o link, colar no WhatsApp. Para cada materia, sao varios minutos. Multiplicados por dezenas de materias por dia, o tempo gasto e significativo.
+A equipe de comunicação precisa distribuir rapidamente matérias da Folha via WhatsApp. O processo manual envolve: abrir cada matéria, copiar título, copiar subtítulos, formatar a mensagem, encurtar o link, colar no WhatsApp. Para cada matéria, são vários minutos. Multiplicados por dezenas de matérias por dia, o tempo gasto é significativo.
 
-## O que a extensao faz
+## O que a extensão faz
 
-1. Le o feed RSS publico da Folha para listar as materias mais recentes de uma editoria
-2. O operador seleciona quais materias deseja disparar
-3. Para cada materia selecionada, a extensao abre a pagina em segundo plano, extrai titulo e subtitulos (linhas finas), encurta o link via is.gd e formata a mensagem no padrao WhatsApp
-4. O operador revisa, edita se necessario, e copia para a area de transferencia
+1. Lê o feed RSS público da Folha para listar as matérias mais recentes de uma editoria
+2. O operador seleciona quais matérias deseja disparar
+3. Para cada matéria selecionada, a extensão abre a página em segundo plano, extrai título e subtítulos (linhas finas), encurta o link via is.gd e formata a mensagem no padrão WhatsApp
+4. O operador revisa, edita se necessário, e copia para a área de transferência
 
-O resultado e uma mensagem pronta como:
+O resultado é uma mensagem pronta como:
 
 ```
-*PSD, Uniao e PL ensaiam alianca para derrotar candidato de Motta e Lula ao TCU*
-• _O petista Odair Cunha e apoiado pelo presidente da Camara, como parte de acordo com o PT_
-• _Ala do centrao diz nao ter compromisso com entendimento e busca bolsonaristas_
+*PSD, União e PL ensaiam aliança para derrotar candidato de Motta e Lula ao TCU*
+• _O petista Odair Cunha é apoiado pelo presidente da Câmara, como parte de acordo com o PT_
+• _Ala do centrão diz não ter compromisso com entendimento e busca bolsonaristas_
 https://is.gd/xxxxx
 ```
 
-## Instalacao
+## Instalação
 
-Ver arquivo [extension/INSTALACAO.md](extension/INSTALACAO.md) para instrucoes detalhadas.
+Ver arquivo [extension/INSTALACAO.md](extension/INSTALACAO.md) para instruções detalhadas.
 
 Resumo:
 
 1. Abrir `chrome://extensions`
 2. Ativar "Modo do desenvolvedor"
-3. Clicar em "Carregar sem compactacao"
+3. Clicar em "Carregar sem compactação"
 4. Selecionar a pasta `extension/`
 
 ## Como usar
 
-1. Clicar no icone da extensao na barra do navegador
-2. Escolher a editoria (Politica, Economia, etc.)
+1. Clicar no ícone da extensão na barra do navegador
+2. Escolher a editoria (Política, Economia, etc.)
 3. Clicar em "Escanear"
-4. Marcar as materias desejadas
+4. Marcar as matérias desejadas
 5. Clicar em "Preparar selecionadas"
-6. Revisar a mensagem (e possivel editar o texto diretamente)
+6. Revisar a mensagem (é possível editar o texto diretamente)
 7. Clicar em "Copiar"
 8. Colar no WhatsApp (Ctrl+V)
 
-A extensao avanca automaticamente para a proxima materia apos a copia.
+A extensão avança automaticamente para a próxima matéria após a cópia.
 
-## Editorias disponiveis
+## Editorias disponíveis
 
 | Editoria | Feed RSS |
 |---|---|
-| Politica | `feeds.folha.uol.com.br/poder/rss091.xml` |
+| Política | `feeds.folha.uol.com.br/poder/rss091.xml` |
 | Economia | `feeds.folha.uol.com.br/mercado/rss091.xml` |
 | Mundo | `feeds.folha.uol.com.br/mundo/rss091.xml` |
 | Cotidiano | `feeds.folha.uol.com.br/cotidiano/rss091.xml` |
@@ -58,20 +58,20 @@ A extensao avanca automaticamente para a proxima materia apos a copia.
 
 ---
 
-## Arquitetura tecnica
+## Arquitetura técnica
 
 ### Componentes
 
-| Arquivo | Funcao |
+| Arquivo | Função |
 |---|---|
-| `manifest.json` | Declaracao da extensao (Manifest V3), permissoes e pontos de entrada |
-| `background.js` | Service worker. Busca o feed RSS, coordena a extracao de cada pagina, encurta URLs |
-| `content-extractor.js` | Script injetado nas paginas da Folha para extrair titulo e subtitulos via DOM |
+| `manifest.json` | Declaração da extensão (Manifest V3), permissões e pontos de entrada |
+| `background.js` | Service worker. Busca o feed RSS, coordena a extração de cada página, encurta URLs |
+| `content-extractor.js` | Script injetado nas páginas da Folha para extrair título e subtítulos via DOM |
 | `popup.html` | Interface do operador |
-| `popup.js` | Logica da interface: listagem, selecao, previa e copia |
+| `popup.js` | Lógica da interface: listagem, seleção, prévia e cópia |
 | `styles.css` | Estilos da interface |
 
-### Fluxo de execucao detalhado
+### Fluxo de execução detalhado
 
 ```
 Operador clica em "Escanear"
@@ -83,47 +83,47 @@ popup.js envia mensagem ao background.js
 background.js faz fetch do feed RSS (ex: feeds.folha.uol.com.br/poder/rss091.xml)
         |
         v
-background.js parseia o XML com regex e retorna lista de {titulo, link}
+background.js parseia o XML com regex e retorna lista de {título, link}
         |
         v
-popup.js exibe a lista. Operador seleciona materias e clica "Preparar"
+popup.js exibe a lista. Operador seleciona matérias e clica "Preparar"
         |
         v
-Para cada materia selecionada, sequencialmente:
+Para cada matéria selecionada, sequencialmente:
    1. background.js abre aba em segundo plano (chrome.tabs.create, active: false)
-   2. Aguarda carregamento completo da pagina (timeout de 15 segundos)
+   2. Aguarda carregamento completo da página (timeout de 15 segundos)
    3. Injeta content-extractor.js via chrome.scripting.executeScript
-   4. content-extractor.js consulta o DOM da pagina e retorna os subtitulos
+   4. content-extractor.js consulta o DOM da página e retorna os subtítulos
    5. background.js fecha a aba imediatamente
-   6. background.js limpa a URL e adiciona parametros UTM de rastreamento
+   6. background.js limpa a URL e adiciona parâmetros UTM de rastreamento
    7. background.js encurta a URL via API do is.gd
    8. background.js monta a mensagem formatada
         |
         v
-popup.js exibe a previa editavel. Operador revisa e clica "Copiar"
+popup.js exibe a prévia editável. Operador revisa e clica "Copiar"
         |
         v
-Mensagem copiada para a area de transferencia via navigator.clipboard.writeText
+Mensagem copiada para a área de transferência via navigator.clipboard.writeText
 ```
 
-### Permissoes declaradas no manifest
+### Permissões declaradas no manifest
 
-| Permissao | Justificativa |
+| Permissão | Justificativa |
 |---|---|
-| `activeTab` | Acesso a aba ativa para operacoes de clipboard |
-| `clipboardWrite` | Copiar mensagem formatada para a area de transferencia |
-| `scripting` | Injetar o content-extractor.js nas paginas da Folha para leitura do DOM |
-| `tabs` | Criar e fechar abas em segundo plano durante a extracao |
-| `host: *.folha.uol.com.br` | Acessar feeds RSS e paginas de materias da Folha |
+| `activeTab` | Acesso à aba ativa para operações de clipboard |
+| `clipboardWrite` | Copiar mensagem formatada para a área de transferência |
+| `scripting` | Injetar o content-extractor.js nas páginas da Folha para leitura do DOM |
+| `tabs` | Criar e fechar abas em segundo plano durante a extração |
+| `host: *.folha.uol.com.br` | Acessar feeds RSS e páginas de matérias da Folha |
 | `host: is.gd` | Chamar a API de encurtamento de URLs |
 
-A extensao **nao solicita** permissoes amplas como `<all_urls>`, `webRequest`, `history`, `bookmarks` ou `cookies`. O acesso e restrito aos dois dominios listados.
+A extensão **não solicita** permissões amplas como `<all_urls>`, `webRequest`, `history`, `bookmarks` ou `cookies`. O acesso é restrito aos dois domínios listados.
 
-### Extracao de subtitulos (content-extractor.js)
+### Extração de subtítulos (content-extractor.js)
 
-O script injetado na pagina tenta os seguintes seletores CSS em cascata, parando no primeiro que retornar ao menos 2 itens:
+O script injetado na página tenta os seguintes seletores CSS em cascata, parando no primeiro que retornar ao menos 2 itens:
 
-1. `.c-news__subheadline li` — padrao atual da Folha
+1. `.c-news__subheadline li` — padrão atual da Folha
 2. `.summary li`
 3. `.bullets li`
 4. `[class*="bullet"] li`
@@ -134,11 +134,11 @@ O script injetado na pagina tenta os seguintes seletores CSS em cascata, parando
 9. `article ul li`
 10. `main ul li`
 
-Se nenhum seletor retornar resultado, o fallback e a meta tag `og:description` da pagina.
+Se nenhum seletor retornar resultado, o fallback é a meta tag `og:description` da página.
 
-### Parametros UTM
+### Parâmetros UTM
 
-Todas as URLs recebem os seguintes parametros antes do encurtamento:
+Todas as URLs recebem os seguintes parâmetros antes do encurtamento:
 
 ```
 utm_source=whatsapp
@@ -146,103 +146,103 @@ utm_medium=social
 utm_campaign=wppcfolhapol
 ```
 
-Isso permite rastrear no analytics da Folha o trafego originado por esses disparos.
+Isso permite rastrear no analytics da Folha o tráfego originado por esses disparos.
 
-### Servicos externos utilizados
+### Serviços externos utilizados
 
-| Servico | Uso | Dados enviados |
+| Serviço | Uso | Dados enviados |
 |---|---|---|
-| feeds.folha.uol.com.br | Leitura do feed RSS (publico, sem autenticacao) | Nenhum dado do operador |
-| www1.folha.uol.com.br | Carregamento das paginas de materias para extracao | Cookies do navegador do operador (sessao da Folha) |
-| is.gd | Encurtamento de URL | Apenas a URL da materia |
+| feeds.folha.uol.com.br | Leitura do feed RSS (público, sem autenticação) | Nenhum dado do operador |
+| www1.folha.uol.com.br | Carregamento das páginas de matérias para extração | Cookies do navegador do operador (sessão da Folha) |
+| is.gd | Encurtamento de URL | Apenas a URL da matéria |
 
 ---
 
-## Riscos conhecidos e mitigacoes
+## Riscos conhecidos e mitigações
 
-### 1. Dependencia da estrutura HTML da Folha
+### 1. Dependência da estrutura HTML da Folha
 
-**Risco:** A extracao dos subtitulos depende de seletores CSS especificos da Folha (`.c-news__subheadline li`, entre outros). Se a Folha alterar a estrutura HTML das paginas de materia, os subtitulos podem deixar de ser extraidos.
+**Risco:** A extração dos subtítulos depende de seletores CSS específicos da Folha (`.c-news__subheadline li`, entre outros). Se a Folha alterar a estrutura HTML das páginas de matéria, os subtítulos podem deixar de ser extraídos.
 
-**Probabilidade:** Media. Redesigns acontecem, mas a Folha mantem a estrutura atual ha bastante tempo.
+**Probabilidade:** Média. Redesigns acontecem, mas a Folha mantém a estrutura atual há bastante tempo.
 
-**Impacto:** Parcial. As mensagens serao geradas sem subtitulos (apenas titulo + link). A operacao nao e interrompida.
+**Impacto:** Parcial. As mensagens serão geradas sem subtítulos (apenas título + link). A operação não é interrompida.
 
-**Mitigacao:** 10 seletores em cascata e fallback para `og:description`. Em caso de falha total, basta atualizar os seletores em `content-extractor.js`.
+**Mitigação:** 10 seletores em cascata e fallback para `og:description`. Em caso de falha total, basta atualizar os seletores em `content-extractor.js`.
 
-### 2. Dependencia do servico is.gd
+### 2. Dependência do serviço is.gd
 
-**Risco:** O encurtamento de URL depende do servico gratuito is.gd. Se o servico ficar indisponivel, instavel ou for descontinuado, os links nao serao encurtados.
+**Risco:** O encurtamento de URL depende do serviço gratuito is.gd. Se o serviço ficar indisponível, instável ou for descontinuado, os links não serão encurtados.
 
-**Probabilidade:** Baixa a media. O is.gd opera desde 2009, mas e gratuito e sem SLA.
+**Probabilidade:** Baixa a média. O is.gd opera desde 2009, mas é gratuito e sem SLA.
 
-**Impacto:** Minimo. Em caso de falha, a extensao usa automaticamente a URL original (longa). A operacao nao e interrompida.
+**Impacto:** Mínimo. Em caso de falha, a extensão usa automaticamente a URL original (longa). A operação não é interrompida.
 
-**Alternativa futura:** Substituir por bit.ly (com API key), t.ly, ou dominio proprio com redirecionamento.
+**Alternativa futura:** Substituir por bit.ly (com API key), t.ly, ou domínio próprio com redirecionamento.
 
-### 3. Dependencia do feed RSS da Folha
+### 3. Dependência do feed RSS da Folha
 
-**Risco:** Os feeds RSS da Folha sao publicos e sem autenticacao, mas podem ser alterados, ter a URL modificada, ou ser descontinuados.
+**Risco:** Os feeds RSS da Folha são públicos e sem autenticação, mas podem ser alterados, ter a URL modificada, ou ser descontinuados.
 
-**Probabilidade:** Baixa. Feeds RSS sao um padrao consolidado e a Folha os mantem publicos.
+**Probabilidade:** Baixa. Feeds RSS são um padrão consolidado e a Folha os mantém públicos.
 
-**Impacto:** Total. Sem o feed, a extensao nao lista materias.
+**Impacto:** Total. Sem o feed, a extensão não lista matérias.
 
-**Mitigacao:** Nao ha fallback automatico. Seria necessario adaptar a extensao para outra fonte de dados (scraping da pagina de listagem, API, etc.).
+**Mitigação:** Não há fallback automático. Seria necessário adaptar a extensão para outra fonte de dados (scraping da página de listagem, API, etc.).
 
 ### 4. Abertura de abas em segundo plano
 
-**Risco:** Para cada materia processada, uma aba do navegador e criada, carregada e fechada. O operador vera abas aparecendo brevemente. Em maquinas com pouca memoria ou conexao lenta, processar muitas materias pode causar lentidao.
+**Risco:** Para cada matéria processada, uma aba do navegador é criada, carregada e fechada. O operador verá abas aparecendo brevemente. Em máquinas com pouca memória ou conexão lenta, processar muitas matérias pode causar lentidão.
 
-**Probabilidade:** Baixa em condicoes normais de uso.
+**Probabilidade:** Baixa em condições normais de uso.
 
-**Impacto:** Desconforto visual e possivel lentidao temporaria.
+**Impacto:** Desconforto visual e possível lentidão temporária.
 
-**Mitigacao:** As materias sao processadas sequencialmente (uma aba por vez). Cada aba e fechada imediatamente apos a extracao. Ha um timeout de 15 segundos por pagina. O escaneamento e limitado a 15 materias por vez.
+**Mitigação:** As matérias são processadas sequencialmente (uma aba por vez). Cada aba é fechada imediatamente após a extração. Há um timeout de 15 segundos por página. O escaneamento é limitado a 15 matérias por vez.
 
 ### 5. Privacidade e dados
 
-- A extensao **nao coleta, armazena ou transmite dados do operador**
-- Nao ha backend, banco de dados ou servidor proprio
-- As unicas requisicoes externas sao para `folha.uol.com.br` (feed e paginas) e `is.gd` (encurtamento)
-- As mensagens existem apenas na memoria local do navegador enquanto o popup esta aberto. Ao fechar, sao descartadas
-- A extensao nao tem acesso a nenhum outro site alem dos dois declarados no manifest
-- Nenhum dado de navegacao, historico ou credencial e acessado
+- A extensão **não coleta, armazena ou transmite dados do operador**
+- Não há backend, banco de dados ou servidor próprio
+- As únicas requisições externas são para `folha.uol.com.br` (feed e páginas) e `is.gd` (encurtamento)
+- As mensagens existem apenas na memória local do navegador enquanto o popup está aberto. Ao fechar, são descartadas
+- A extensão não tem acesso a nenhum outro site além dos dois declarados no manifest
+- Nenhum dado de navegação, histórico ou credencial é acessado
 
-### 6. Distribuicao e confianca
+### 6. Distribuição e confiança
 
-A extensao nao esta publicada na Chrome Web Store. E instalada manualmente via modo desenvolvedor ("Carregar sem compactacao"). Isso significa:
+A extensão não está publicada na Chrome Web Store. É instalada manualmente via modo desenvolvedor ("Carregar sem compactação"). Isso significa:
 
-- **Nao passa por revisao automatizada do Google.** O codigo-fonte, no entanto, e aberto e auditavel neste repositorio.
-- **O Chrome pode exibir avisos** sobre extensoes em modo desenvolvedor a cada inicializacao. Isso e normal e esperado.
-- **Atualizacoes nao sao automaticas.** Para atualizar, e necessario baixar a nova versao e recarregar na pagina de extensoes.
+- **Não passa por revisão automatizada do Google.** O código-fonte, no entanto, é aberto e auditável neste repositório.
+- **O Chrome pode exibir avisos** sobre extensões em modo desenvolvedor a cada inicialização. Isso é normal e esperado.
+- **Atualizações não são automáticas.** Para atualizar, é necessário baixar a nova versão e recarregar na página de extensões.
 
-Para distribuicao em escala, seria necessario publicar na Chrome Web Store (requer conta de desenvolvedor Google, taxa unica de US$ 5 e submissao para revisao).
+Para distribuição em escala, seria necessário publicar na Chrome Web Store (requer conta de desenvolvedor Google, taxa única de US$ 5 e submissão para revisão).
 
 ---
 
-## Limitacoes
+## Limitações
 
-- Opera exclusivamente com materias da Folha de S.Paulo
-- A mensagem e copiada para a area de transferencia; o envio no WhatsApp e manual (colar e enviar)
-- O feed RSS retorna as materias mais recentes, sem controle de data ou busca por palavra-chave
-- Materias com paywall: os subtitulos sao extraidos do header da pagina, que e publico mesmo em materias restritas a assinantes, mas isso depende de a Folha manter essa estrutura
-- Limite de 15 materias por escaneamento
+- Opera exclusivamente com matérias da Folha de S.Paulo
+- A mensagem é copiada para a área de transferência; o envio no WhatsApp é manual (colar e enviar)
+- O feed RSS retorna as matérias mais recentes, sem controle de data ou busca por palavra-chave
+- Matérias com paywall: os subtítulos são extraídos do header da página, que é público mesmo em matérias restritas a assinantes, mas isso depende de a Folha manter essa estrutura
+- Limite de 15 matérias por escaneamento
 
 ## Estrutura de arquivos
 
 ```
 disparos/
 ├── extension/
-│   ├── manifest.json           # Configuracao da extensao
+│   ├── manifest.json           # Configuração da extensão
 │   ├── background.js           # Service worker (feed, tabs, URLs)
-│   ├── content-extractor.js    # Extracao de subtitulos via DOM
+│   ├── content-extractor.js    # Extração de subtítulos via DOM
 │   ├── popup.html              # Interface do operador
-│   ├── popup.js                # Logica da interface
+│   ├── popup.js                # Lógica da interface
 │   ├── styles.css              # Estilos visuais
-│   ├── icons/                  # Icones da extensao
+│   ├── icons/                  # Ícones da extensão
 │   │   ├── icon.svg
 │   │   └── generate-icons.html # Gerador de PNGs a partir do SVG
-│   └── INSTALACAO.md           # Instrucoes de instalacao passo a passo
+│   └── INSTALACAO.md           # Instruções de instalação passo a passo
 └── README.md
 ```
