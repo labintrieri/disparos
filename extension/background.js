@@ -1,5 +1,5 @@
 // Service Worker - processa requests em background
-// Nota: Service workers não têm acesso ao DOM, então usamos regex para parsing
+// Usa tabs + content script injection para extrair linhas finas das páginas
 
 // Escuta mensagens do popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -151,135 +151,75 @@ async function processArticle(article) {
   }
 }
 
-// === Buscar página e extrair linhas finas ===
+// === Buscar página e extrair linhas finas via tab injection ===
 async function extractBulletsFromPage(url) {
+  let tabId = null;
   try {
-    const response = await fetch(url, { credentials: 'include' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // Abre aba em background (não ativa)
+    const tab = await chrome.tabs.create({ url, active: false });
+    tabId = tab.id;
 
-    const buffer = await response.arrayBuffer();
-    let html;
-    try {
-      const decoder = new TextDecoder('utf-8', { fatal: true });
-      html = decoder.decode(buffer);
-    } catch {
-      const decoder = new TextDecoder('iso-8859-1');
-      html = decoder.decode(buffer);
+    // Espera a página carregar
+    await waitForTabLoad(tabId);
+
+    // Injeta o content-extractor.js na página
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content-extractor.js'],
+    });
+
+    // Fecha a aba
+    await chrome.tabs.remove(tabId);
+    tabId = null;
+
+    // Pega o resultado do script injetado
+    if (results && results[0] && results[0].result) {
+      return results[0].result.bullets || [];
     }
 
-    // Tenta extrair linhas finas dos seletores conhecidos da Folha
-    let bullets = [];
-
-    // 1. Busca .c-news__subheadline (principal seletor da Folha)
-    bullets = extractListItemsFromClass(html, 'c-news__subheadline');
-
-    // 2. Fallback: busca .summary
-    if (bullets.length < 2) {
-      const summaryBullets = extractListItemsFromClass(html, 'summary');
-      if (summaryBullets.length >= 2) bullets = summaryBullets;
-    }
-
-    // 3. Fallback: busca .bullets ou classe que contenha "bullet"
-    if (bullets.length < 2) {
-      const bulletBullets = extractListItemsFromClass(html, 'bullet');
-      if (bulletBullets.length >= 2) bullets = bulletBullets;
-    }
-
-    // 4. Fallback: busca linha-fina
-    if (bullets.length < 2) {
-      const linhaFinaBullets = extractListItemsFromClass(html, 'linha-fina');
-      if (linhaFinaBullets.length >= 2) bullets = linhaFinaBullets;
-    }
-
-    // 5. Fallback: busca <article> header <ul> <li>
-    if (bullets.length < 2) {
-      const articleBullets = extractArticleHeaderBullets(html);
-      if (articleBullets.length >= 2) bullets = articleBullets;
-    }
-
-    // 6. Último fallback: og:description
-    if (bullets.length < 2) {
-      const ogDesc = extractMetaContent(html, 'og:description');
-      if (ogDesc) {
-        const parts = ogDesc
-          .split(/(?:•|·|;|—|–|:|\.)(?:\s+|$)/)
-          .map(s => cleanText(s))
-          .filter(s => s && s.length > 10 && s.length < 220);
-        if (parts.length >= 2) bullets = parts.slice(0, 2);
-        else if (parts.length === 1) bullets = parts;
-      }
-    }
-
-    return bullets.slice(0, 2);
+    return [];
 
   } catch (error) {
-    console.error('Erro ao buscar página:', error.message);
+    console.error('Erro ao extrair bullets da página:', error.message);
+    // Garante que a aba seja fechada em caso de erro
+    if (tabId) {
+      try { await chrome.tabs.remove(tabId); } catch {}
+    }
     return [];
   }
 }
 
-// Extrai <li> de dentro de um elemento com a classe especificada
-function extractListItemsFromClass(html, className) {
-  // Busca o bloco que contenha a classe (aceita aspas simples ou duplas)
-  const classRegex = new RegExp(
-    `<[^>]+class=["'][^"']*${className}[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:div|ul|ol|section|aside|nav|span)>`,
-    'i'
-  );
-  const blockMatch = html.match(classRegex);
-  if (!blockMatch) return [];
+// Espera uma aba terminar de carregar (com timeout)
+function waitForTabLoad(tabId, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve(); // Resolve mesmo com timeout para tentar extrair o que tiver
+    }, timeoutMs);
 
-  return extractLiContents(blockMatch[1]);
-}
-
-// Extrai <li> de dentro de <article>...<header>...<ul>
-function extractArticleHeaderBullets(html) {
-  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-  if (!articleMatch) return [];
-
-  // Busca o header dentro do article
-  const headerMatch = articleMatch[1].match(/<header[^>]*>([\s\S]*?)<\/header>/i);
-  if (!headerMatch) return [];
-
-  // Busca <ul> dentro do header
-  const ulMatch = headerMatch[1].match(/<ul[^>]*>([\s\S]*?)<\/ul>/i);
-  if (!ulMatch) return [];
-
-  return extractLiContents(ulMatch[1]);
-}
-
-// Extrai texto de todos os <li> de um bloco HTML
-function extractLiContents(html) {
-  const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-  const items = [];
-  let match;
-  while ((match = liRegex.exec(html)) !== null) {
-    const text = cleanText(match[1].replace(/<[^>]*>/g, ''));
-    if (text && text.length > 3 && text.length < 220) {
-      items.push(text);
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
     }
-  }
-  return items;
-}
 
-// Extrai conteúdo de uma meta tag (og:description, etc.)
-function extractMetaContent(html, property) {
-  const regex = new RegExp(
-    `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']*)["']|<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${property}["']`,
-    'i'
-  );
-  const match = html.match(regex);
-  if (match) {
-    return cleanText(decodeHTMLEntities(match[1] || match[2] || ''));
-  }
-  return '';
-}
+    chrome.tabs.onUpdated.addListener(listener);
 
-// Limpa texto: remove espaços extras, nbsp, etc.
-function cleanText(text) {
-  return (text || '')
-    .replace(/\u00A0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+    // Verifica se já está carregada
+    chrome.tabs.get(tabId).then(tab => {
+      if (tab.status === 'complete') {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }).catch(() => {
+      clearTimeout(timeout);
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error('Tab not found'));
+    });
+  });
 }
 
 // === Limpar URL ===
