@@ -23,7 +23,19 @@ async function fetchFeed(feedUrl) {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const text = await response.text();
+    // Lê como bytes e decodifica como UTF-8 (com fallback para ISO-8859-1)
+    const buffer = await response.arrayBuffer();
+    let text;
+
+    // Tenta UTF-8 primeiro
+    try {
+      const decoder = new TextDecoder('utf-8', { fatal: true });
+      text = decoder.decode(buffer);
+    } catch {
+      // Se falhar, tenta ISO-8859-1 (Latin-1)
+      const decoder = new TextDecoder('iso-8859-1');
+      text = decoder.decode(buffer);
+    }
 
     // Parsing XML com regex (service worker não tem DOMParser)
     const articles = [];
@@ -120,19 +132,16 @@ function decodeHTMLEntities(text) {
 // === Processar Artigo ===
 async function processArticle(article) {
   try {
-    // 1. Busca o conteúdo da página
-    const pageContent = await fetchArticlePage(article.link);
+    // 1. Extrai bullets da description do feed
+    const bullets = extractBulletsFromDescription(article.description);
 
-    // 2. Extrai bullets
-    const bullets = extractBullets(pageContent, article.description);
-
-    // 3. Limpa e adiciona UTM à URL
+    // 2. Limpa e adiciona UTM à URL
     const cleanedUrl = cleanUrl(article.link);
 
-    // 4. Encurta a URL
+    // 3. Encurta a URL
     const shortUrl = await shortenUrl(cleanedUrl);
 
-    // 5. Monta a mensagem
+    // 4. Monta a mensagem
     const message = formatMessage(article.title, bullets, shortUrl);
 
     return { message, shortUrl };
@@ -142,71 +151,37 @@ async function processArticle(article) {
   }
 }
 
-// === Buscar Página do Artigo ===
-async function fetchArticlePage(url) {
-  try {
-    const response = await fetch(url);
-    const text = await response.text();
-    return text;
-  } catch {
-    return '';
-  }
-}
+// Extrai bullets da description do RSS
+function extractBulletsFromDescription(description) {
+  if (!description) return [];
 
-// === Extrair Bullets (usando regex, sem DOM) ===
-function extractBullets(html, fallbackDescription) {
-  // Tenta encontrar lista de bullets no HTML
-  // Procura por padrões comuns: <li> dentro de classes específicas
+  // Limpa a description
+  let text = description
+    .replace(/<[^>]*>/g, '') // Remove tags HTML
+    .replace(/\s+/g, ' ')    // Normaliza espaços
+    .trim();
 
-  const patterns = [
-    // Classe c-news__subheadline
-    /<[^>]*class="[^"]*c-news__subheadline[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
-    // Classe summary
-    /<[^>]*class="[^"]*summary[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
-    // Classe bullets
-    /<[^>]*class="[^"]*bullet[^"]*"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
-    // Qualquer ul dentro de header de article
-    /<article[^>]*>[\s\S]*?<header[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i,
-  ];
+  // Tenta dividir por separadores comuns
+  // Padrão do bookmarklet: (?:•|·|;|—|–|:|\.)(?:\s+|$)
+  const parts = text
+    .split(/(?:•|·|;|—|–|\.\s)/)
+    .map(s => s.trim())
+    .filter(s => s && s.length > 10 && s.length < 200);
 
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match) {
-      const listContent = match[1];
-      const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-      const bullets = [];
-      let liMatch;
-
-      while ((liMatch = liRegex.exec(listContent)) !== null && bullets.length < 2) {
-        const text = liMatch[1]
-          .replace(/<[^>]*>/g, '') // Remove HTML tags
-          .replace(/\s+/g, ' ')    // Normaliza espaços
-          .trim();
-
-        if (text.length > 3 && text.length < 220) {
-          bullets.push(decodeHTMLEntities(text));
-        }
-      }
-
-      if (bullets.length >= 2) {
-        return bullets;
-      }
-    }
+  if (parts.length >= 2) {
+    return parts.slice(0, 2);
   }
 
-  // Fallback: tenta extrair da descrição do RSS
-  if (fallbackDescription) {
-    const parts = fallbackDescription
-      .split(/[•·;—–]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 3 && s.length < 220);
+  // Se não conseguiu dividir, tenta usar a description inteira como um bullet
+  // (se não for muito longa)
+  if (text.length > 10 && text.length < 200) {
+    return [text];
+  }
 
-    if (parts.length >= 2) {
-      return parts.slice(0, 2);
-    }
-    if (parts.length === 1) {
-      return [parts[0]];
-    }
+  // Se for muito longa, pega as primeiras duas frases
+  const sentences = text.split(/\.\s+/);
+  if (sentences.length >= 2) {
+    return sentences.slice(0, 2).map(s => s.trim()).filter(s => s.length > 0);
   }
 
   return [];
@@ -269,7 +244,8 @@ function formatMessage(title, bullets, url) {
   }
 
   if (bullets.length > 0) {
-    parts.push(bullets.map(b => `• ${b}`).join('\n'));
+    // Bullets em itálico (usando _ do WhatsApp)
+    parts.push(bullets.map(b => `• _${b}_`).join('\n'));
   }
 
   parts.push(url);
