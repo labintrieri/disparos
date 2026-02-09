@@ -231,18 +231,21 @@ Para distribuição em escala, seria necessário publicar na Chrome Web Store (r
 
 ## Estrutura de arquivos
 
+A pasta `extension/` é a que deve ser carregada no Chrome. Os demais arquivos na raiz são apenas documentação e configuração do repositório.
+
 ```
 disparos/
-├── extension/
-│   ├── manifest.json           # Configuração da extensão
-│   ├── background.js           # Service worker (feed, tabs, URLs)
-│   ├── content-extractor.js    # Extração de subtítulos via DOM
-│   ├── popup.html              # Interface do operador
-│   ├── popup.js                # Lógica da interface
-│   ├── styles.css              # Estilos visuais
-│   ├── icons/                  # Ícones da extensão
+├── extension/                    ← carregar esta pasta no Chrome
+│   ├── manifest.json             # Configuração da extensão
+│   ├── background.js             # Service worker (feed, tabs, URLs)
+│   ├── content-extractor.js      # Extração de subtítulos via DOM
+│   ├── popup.html                # Interface do operador
+│   ├── popup.js                  # Lógica da interface
+│   ├── styles.css                # Estilos visuais
+│   ├── icons/                    # Ícones da extensão
 │   │   ├── icon.svg
-│   │   └── generate-icons.html # Gerador de PNGs a partir do SVG
-│   └── INSTALACAO.md           # Instruções de instalação passo a passo
-└── README.md
+│   │   └── generate-icons.html   # Gerador de PNGs a partir do SVG
+│   └── INSTALACAO.md             # Instruções de instalação passo a passo
+├── README.md
+└── LICENSE
 ```
