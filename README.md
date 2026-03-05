@@ -1,10 +1,6 @@
-# Disparos Folha
+# Disparos
 
 Extensão para Google Chrome que automatiza a preparação de mensagens para WhatsApp a partir de matérias da Folha de S.Paulo.
-
-## Problema
-
-A equipe de comunicação precisa distribuir rapidamente matérias da Folha via WhatsApp. O processo manual envolve: abrir cada matéria, copiar título, copiar subtítulos, formatar a mensagem, encurtar o link, colar no WhatsApp. Para cada matéria, são vários minutos. Multiplicados por dezenas de matérias por dia, o tempo gasto é significativo.
 
 ## O que a extensão faz
 
@@ -54,7 +50,6 @@ A extensão avança automaticamente para a próxima matéria após a cópia.
 | Economia | `feeds.folha.uol.com.br/mercado/rss091.xml` |
 | Mundo | `feeds.folha.uol.com.br/mundo/rss091.xml` |
 | Cotidiano | `feeds.folha.uol.com.br/cotidiano/rss091.xml` |
-| Esporte | `feeds.folha.uol.com.br/esporte/rss091.xml` |
 
 ---
 
@@ -158,48 +153,6 @@ Isso permite rastrear no analytics da Folha o tráfego originado por esses dispa
 
 ---
 
-## Riscos conhecidos e mitigações
-
-### 1. Dependência da estrutura HTML da Folha
-
-**Risco:** A extração dos subtítulos depende de seletores CSS específicos da Folha (`.c-news__subheadline li`, entre outros). Se a Folha alterar a estrutura HTML das páginas de matéria, os subtítulos podem deixar de ser extraídos.
-
-**Probabilidade:** Média. Redesigns acontecem, mas a Folha mantém a estrutura atual há bastante tempo.
-
-**Impacto:** Parcial. As mensagens serão geradas sem subtítulos (apenas título + link). A operação não é interrompida.
-
-**Mitigação:** 10 seletores em cascata e fallback para `og:description`. Em caso de falha total, basta atualizar os seletores em `content-extractor.js`.
-
-### 2. Dependência do serviço is.gd
-
-**Risco:** O encurtamento de URL depende do serviço gratuito is.gd. Se o serviço ficar indisponível, instável ou for descontinuado, os links não serão encurtados.
-
-**Probabilidade:** Baixa a média. O is.gd opera desde 2009, mas é gratuito e sem SLA.
-
-**Impacto:** Mínimo. Em caso de falha, a extensão usa automaticamente a URL original (longa). A operação não é interrompida.
-
-**Alternativa futura:** Substituir por bit.ly (com API key), t.ly, ou domínio próprio com redirecionamento.
-
-### 3. Dependência do feed RSS da Folha
-
-**Risco:** Os feeds RSS da Folha são públicos e sem autenticação, mas podem ser alterados, ter a URL modificada, ou ser descontinuados.
-
-**Probabilidade:** Baixa. Feeds RSS são um padrão consolidado e a Folha os mantém públicos.
-
-**Impacto:** Total. Sem o feed, a extensão não lista matérias.
-
-**Mitigação:** Não há fallback automático. Seria necessário adaptar a extensão para outra fonte de dados (scraping da página de listagem, API, etc.).
-
-### 4. Abertura de abas em segundo plano
-
-**Risco:** Para cada matéria processada, uma aba do navegador é criada, carregada e fechada. O operador verá abas aparecendo brevemente. Em máquinas com pouca memória ou conexão lenta, processar muitas matérias pode causar lentidão.
-
-**Probabilidade:** Baixa em condições normais de uso.
-
-**Impacto:** Desconforto visual e possível lentidão temporária.
-
-**Mitigação:** As matérias são processadas sequencialmente (uma aba por vez). Cada aba é fechada imediatamente após a extração. Há um timeout de 15 segundos por página. O escaneamento é limitado a 15 matérias por vez.
-
 ### 5. Privacidade e dados
 
 - A extensão **não coleta, armazena ou transmite dados do operador**
@@ -209,15 +162,12 @@ Isso permite rastrear no analytics da Folha o tráfego originado por esses dispa
 - A extensão não tem acesso a nenhum outro site além dos dois declarados no manifest
 - Nenhum dado de navegação, histórico ou credencial é acessado
 
-### 6. Distribuição e confiança
-
+### 6. Distribuição 
 A extensão não está publicada na Chrome Web Store. É instalada manualmente via modo desenvolvedor ("Carregar sem compactação"). Isso significa:
 
 - **Não passa por revisão automatizada do Google.** O código-fonte, no entanto, é aberto e auditável neste repositório.
 - **O Chrome pode exibir avisos** sobre extensões em modo desenvolvedor a cada inicialização. Isso é normal e esperado.
 - **Atualizações não são automáticas.** Para atualizar, é necessário baixar a nova versão e recarregar na página de extensões.
-
-Para distribuição em escala, seria necessário publicar na Chrome Web Store (requer conta de desenvolvedor Google, taxa única de US$ 5 e submissão para revisão).
 
 ---
 
@@ -226,8 +176,8 @@ Para distribuição em escala, seria necessário publicar na Chrome Web Store (r
 - Opera exclusivamente com matérias da Folha de S.Paulo
 - A mensagem é copiada para a área de transferência; o envio no WhatsApp é manual (colar e enviar)
 - O feed RSS retorna as matérias mais recentes, sem controle de data ou busca por palavra-chave
-- Matérias com paywall: os subtítulos são extraídos do header da página, que é público mesmo em matérias restritas a assinantes, mas isso depende de a Folha manter essa estrutura
 - Limite de 15 matérias por escaneamento
+- O link encurtado via is.gd não funciona para disparos feitos pelo navegador Edge. Funciona no Chrome e Mozila.
 
 ## Estrutura de arquivos
 
