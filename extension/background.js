@@ -268,7 +268,15 @@ function waitForTabLoad(tabId, timeoutMs = 15000) {
 
 // === Limpar URL ===
 function cleanUrl(url) {
-  let cleaned = url.split('#')[0];
+  let cleaned = url;
+
+  // Extrai URL real de redirects da Folha (redir.folha.com.br/.../*URL_REAL)
+  const redirMatch = cleaned.match(/\*(.+)$/);
+  if (redirMatch) {
+    cleaned = redirMatch[1];
+  }
+
+  cleaned = cleaned.split('#')[0];
   cleaned = cleaned.replace(/[?&]utm_[^&]*/g, '');
   cleaned = cleaned.replace(/\/amp\/?$/, '');
   cleaned = cleaned.replace(/\?$/, '');
