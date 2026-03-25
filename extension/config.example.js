@@ -1,0 +1,3 @@
+const CONFIG = {
+  DUB_API_KEY: "SUA_API_KEY_AQUI"
+};

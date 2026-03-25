@@ -1,6 +1,9 @@
 // Service Worker - processa requests em background
 // Usa tabs + content script injection para extrair linhas finas das páginas
 
+// Carrega configuração com API keys (config.js não é commitado no repo)
+importScripts('config.js');
+
 // Escuta mensagens do popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'fetchFeed') {
@@ -256,7 +259,7 @@ async function shortenWithDub(url, metadata) {
   const response = await fetch("https://api.dub.co/links", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer dub_GiAPxhx2fhctEMRvk5XrsXIe",
+      "Authorization": `Bearer ${CONFIG.DUB_API_KEY}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
