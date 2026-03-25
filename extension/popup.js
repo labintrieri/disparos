@@ -201,12 +201,13 @@ async function prepareMessages() {
       // Avisa se Dub.co falhou e usou fallback
       if (result.dubError) {
         const dubMessages = {
-          'DUB_RATE_LIMIT': '⚠️ Limite de links Dub.co atingido. Usando is.gd como fallback.',
-          'DUB_INVALID_KEY': '⚠️ API key do Dub.co inválida. Usando is.gd como fallback.',
+          'DUB_RATE_LIMIT': '⚠️ Limite de links Dub.co atingido. Usando is.gd.',
+          'DUB_INVALID_KEY': '⚠️ API key do Dub.co inválida. Usando is.gd.',
+          'DUB_NO_KEY': '⚠️ API key do Dub.co não configurada. Usando is.gd.',
         };
-        const msg = dubMessages[result.dubError] || `⚠️ Dub.co indisponível. Usando is.gd como fallback.`;
+        const msg = dubMessages[result.dubError] || `⚠️ Dub.co erro: ${result.dubError}. Usando is.gd.`;
         showStatus(msg, 'warning');
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 3000));
       }
 
       state.preparedMessages.push({

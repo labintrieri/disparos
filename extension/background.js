@@ -288,8 +288,11 @@ function cleanUrl(url) {
 // === Encurtar URL via Dub.co (com metadados OG) ===
 async function shortenWithDub(url, metadata) {
   if (!CONFIG.DUB_API_KEY) {
-    throw new Error('DUB_NO_KEY');
+    throw new Error('DUB_NO_KEY: config.js não tem DUB_API_KEY');
   }
+
+  console.log('[Dub.co] Encurtando URL:', url);
+  console.log('[Dub.co] API Key (primeiros 10 chars):', CONFIG.DUB_API_KEY.substring(0, 10) + '...');
 
   const response = await fetch("https://api.dub.co/links", {
     method: "POST",
@@ -306,28 +309,33 @@ async function shortenWithDub(url, metadata) {
     })
   });
 
+  console.log('[Dub.co] Status:', response.status);
+
   // 409 = link já existe, Dub.co retorna o existente
   if (response.status === 409) {
     const data = await response.json();
+    console.log('[Dub.co] 409 resposta:', JSON.stringify(data));
     if (data.shortLink) return data.shortLink;
     if (data.error?.link?.shortLink) return data.error.link.shortLink;
     throw new Error("DUB_CONFLICT");
   }
 
   if (response.status === 401) {
-    throw new Error("DUB_INVALID_KEY");
+    throw new Error("DUB_INVALID_KEY: API key inválida ou expirada");
   }
 
   if (response.status === 429) {
-    throw new Error("DUB_RATE_LIMIT");
+    throw new Error("DUB_RATE_LIMIT: limite de requisições atingido");
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`DUB_ERROR: ${error.error?.message || response.status}`);
+    const errorBody = await response.text().catch(() => '');
+    console.error('[Dub.co] Erro resposta:', errorBody);
+    throw new Error(`DUB_ERROR (${response.status}): ${errorBody}`);
   }
 
   const data = await response.json();
+  console.log('[Dub.co] Sucesso:', data.shortLink);
   return data.shortLink;
 }
 
