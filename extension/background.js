@@ -195,27 +195,9 @@ function cleanUrl(url) {
   return `${cleaned}${separator}utm_source=whatsapp&utm_medium=social&utm_campaign=wppcfolhapol`;
 }
 
-// Decodifica o payload de um JWT token
-function decodeJWT(token) {
-  try {
-    const payload = token.split('.')[1];
-    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-  } catch {
-    return null;
-  }
-}
-
-// Busca o profile ID do mLabs a partir do token JWT ou da API
+// Busca o profile ID do mLabs via API
 async function getMlabsProfileId(token) {
-  // Tenta extrair do JWT
-  const jwt = decodeJWT(token);
-  if (jwt) {
-    const id = jwt.profileId || jwt.profile_id || jwt.currentProfile || jwt.current_profile;
-    if (id) return String(id);
-  }
-
-  // Fallback: busca da API de perfis
-  const response = await fetch("https://core-api.mlabs.io/user/profiles", {
+  const response = await fetch("https://core-api.mlabs.io/profiles", {
     headers: {
       "accept": "application/json",
       "accept-version": "v1",
@@ -223,13 +205,11 @@ async function getMlabsProfileId(token) {
     }
   });
 
-  if (response.ok) {
-    const data = await response.json();
-    // Pode ser um array de perfis ou um objeto
-    if (Array.isArray(data) && data.length > 0) {
-      return String(data[0].id || data[0].profileId || data[0].profile_id);
-    }
-    if (data.id) return String(data.id);
+  if (!response.ok) return null;
+
+  const result = await response.json();
+  if (result.data && result.data.length > 0) {
+    return result.data[0].id;
   }
 
   return null;
