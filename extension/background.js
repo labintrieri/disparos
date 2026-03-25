@@ -280,21 +280,15 @@ function cleanUrl(url) {
 
 // === Encurtar URL via mLabs (pega token do cookie) ===
 async function shortenWithMlabs(url) {
+  // Cookie fica no domínio .mlabs.io
   const cookie = await chrome.cookies.get({
-    url: "https://app.mlabs.com.br",
+    url: "https://publish.mlabs.io",
     name: "authApiToken"
   });
 
-  // Tenta também o domínio antigo
-  const cookie2 = !cookie ? await chrome.cookies.get({
-    url: "https://publish.mlabs.io",
-    name: "authApiToken"
-  }) : null;
+  if (!cookie) throw new Error("MLABS_NOT_LOGGED_IN");
 
-  const authCookie = cookie || cookie2;
-  if (!authCookie) throw new Error("MLABS_NOT_LOGGED_IN");
-
-  const token = decodeURIComponent(authCookie.value);
+  const token = decodeURIComponent(cookie.value);
   console.log('[mLabs] Token encontrado, encurtando:', url);
 
   const response = await fetch("https://core-api.mlabs.io/social/link/short", {
@@ -303,8 +297,9 @@ async function shortenWithMlabs(url) {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "accept": "*/*",
       "accept-version": "v1",
+      "current-profile": "3807480",
       "current-timezone": "America/Sao_Paulo",
-      "origin": "https://app.mlabs.com.br",
+      "origin": "https://publish.mlabs.io",
       "Authorization": `Bearer ${token}`
     },
     body: `link=${encodeURIComponent(url)}`
@@ -323,7 +318,18 @@ async function shortenWithMlabs(url) {
   }
 
   const data = await response.json();
-  console.log('[mLabs] Sucesso:', JSON.stringify(data));
+  console.log('[mLabs] Link criado:', data.short_link);
+
+  // Aquece o link: acessa para forçar o mLabs a cachear os metadados OG
+  try {
+    console.log('[mLabs] Aquecendo link...');
+    await fetch(data.short_link, { redirect: 'follow' });
+    await new Promise(r => setTimeout(r, 3000));
+    console.log('[mLabs] Link aquecido');
+  } catch (e) {
+    console.warn('[mLabs] Erro no aquecimento (ignorado):', e.message);
+  }
+
   return data.short_link;
 }
 

@@ -191,7 +191,7 @@ async function prepareMessages() {
       const result = await sendMessageWithTimeout({
         action: 'processArticle',
         article: article,
-      }, 30000);
+      }, 45000);
 
       if (result.error) {
         console.error('Erro ao processar:', result.error);

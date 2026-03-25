@@ -15,7 +15,8 @@
     "https://is.gd/*",
     "https://api.allorigins.win/*",
     "https://*.mlabs.io/*",
-    "https://*.mlabs.com.br/*"
+    "https://*.mlabs.com.br/*",
+    "https://mla.bs/*"
   ],
   "action": {
     "default_popup": "popup.html",
