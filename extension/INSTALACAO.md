@@ -1,148 +1,59 @@
-# Como Instalar a Extensão Disparos Folha
+# Como Instalar a Extensao Disparos Folha
 
-## Passo 1: Gerar os ícones
+## Passo 1: Baixar
 
-1. Abra o arquivo `icons/generate-icons.html` no navegador
-2. Clique no botão **"Baixar todos os ícones"**
-3. Três arquivos serão baixados: `icon16.png`, `icon48.png`, `icon128.png`
-4. Mova esses arquivos para a pasta `icons/`
+1. No GitHub, clique em **Code > Download ZIP**
+2. Extraia o ZIP em qualquer pasta do seu computador
 
-```
-extension/
-├── icons/
-│   ├── icon16.png   ← mova para cá
-│   ├── icon48.png   ← mova para cá
-│   └── icon128.png  ← mova para cá
-```
+## Passo 2: Instalar no Chrome
 
----
+1. Abra o Chrome e digite na barra de endereco: `chrome://extensions`
+2. Ative o **Modo do desenvolvedor** (canto superior direito)
+3. Clique em **Carregar sem compactacao**
+4. Selecione a pasta `extension/` (dentro de `disparos-main/disparos-main/`)
 
-## Passo 2: Configurar a API key
+A extensao aparecera na lista com o nome "Disparos Folha".
 
-A extensão usa o [Dub.co](https://dub.co) para encurtar links com metadados OG (preview com foto no WhatsApp). A API key fica em um arquivo separado que não é versionado.
+## Passo 3: Fixar a extensao (opcional)
 
-1. Na pasta `extension/`, copie o arquivo de exemplo:
-   ```
-   cp config.example.js config.js
-   ```
-2. Abra `config.js` e substitua o placeholder pela API key real:
-   ```js
-   const CONFIG = {
-     DUB_API_KEY: "dub_SuaChaveAqui"
-   };
-   ```
-
-> Sem esse arquivo, a extensão vai usar o is.gd como fallback (sem preview com foto).
-
----
-
-## Passo 3: Instalar no Chrome
-
-### 3.1 Abrir página de extensões
-
-1. Abra o Chrome
-2. Digite na barra de endereço: `chrome://extensions`
-3. Aperte Enter
-
-### 3.2 Ativar modo desenvolvedor
-
-No canto superior direito, ative o botão **"Modo do desenvolvedor"**
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ Extensões                          [Modo desenvolvedor] │
-│                                           🔘 → 🔵       │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 3.3 Carregar a extensão
-
-1. Clique no botão **"Carregar sem compactação"**
-2. Navegue até a pasta `extension/`
-3. Clique em **"Selecionar pasta"**
-
-### 3.4 Pronto!
-
-A extensão aparecerá na lista e um ícone 📰 surgirá na barra do navegador.
-
----
-
-## Passo 4: Fixar a extensão (opcional)
-
-Para o ícone ficar sempre visível:
-
-1. Clique no ícone de quebra-cabeça 🧩 na barra do Chrome
+1. Clique no icone de quebra-cabeca na barra do Chrome
 2. Encontre "Disparos Folha"
-3. Clique no alfinete 📌 para fixar
-
----
+3. Clique no alfinete para fixar
 
 ## Como Usar
 
-```
-┌────────────────────────────────────────┐
-│ 1. Clique no ícone 📰                  │
-│                                        │
-│ 2. Escolha o feed (Política, etc.)     │
-│                                        │
-│ 3. Clique em "Escanear"                │
-│                                        │
-│ 4. Marque as matérias desejadas ☑      │
-│                                        │
-│ 5. Clique em "Preparar selecionadas"   │
-│                                        │
-│ 6. Revise a mensagem                   │
-│                                        │
-│ 7. Clique em "Copiar"                  │
-│                                        │
-│ 8. Cole no WhatsApp! (Ctrl+V)          │
-└────────────────────────────────────────┘
-```
+1. Faca login no **mLabs** (publish.mlabs.io) em outra aba
+2. Clique no icone da extensao
+3. Escolha a editoria (Politica, Economia, etc.)
+4. Clique em **Escanear**
+5. Marque as materias desejadas
+6. Clique em **Preparar selecionadas**
+7. Revise a mensagem (pode editar)
+8. Clique em **Copiar** e cole no WhatsApp (Ctrl+V)
 
----
+A extensao avanca automaticamente para a proxima materia apos copiar.
 
-## Instalação no Firefox
+## Como Atualizar
 
-1. Digite na barra de endereço: `about:debugging`
-2. Clique em **"Este Firefox"** no menu lateral
-3. Clique em **"Carregar extensão temporária..."**
-4. Selecione o arquivo `manifest.json` dentro da pasta `extension/`
+1. Baixe o ZIP novo do GitHub
+2. Extraia substituindo a pasta antiga
+3. Em `chrome://extensions`, clique no botao de recarregar da extensao
 
-⚠️ **Nota:** No Firefox, a extensão temporária é removida ao fechar o navegador.
+## Solucao de Problemas
 
----
-
-## Instalação no Edge
-
-O processo é idêntico ao Chrome:
-
-1. Digite: `edge://extensions`
-2. Ative **"Modo do desenvolvedor"**
-3. Clique em **"Carregar descompactada"**
-4. Selecione a pasta `extension/`
-
----
-
-## Solução de Problemas
-
-### A extensão não aparece
-- Verifique se o modo desenvolvedor está ativado
-- Tente recarregar a extensão (botão de atualizar na página de extensões)
-
-### Erro ao escanear feed
-- Verifique sua conexão com a internet
-- O site da Folha pode estar temporariamente fora do ar
+### Feed nao carrega
+- Verifique sua conexao com a internet
+- Verifique se a extensao esta ativa em `chrome://extensions`
+- Clique em "Erros" na pagina da extensao para ver detalhes
 
 ### Erro ao encurtar link
-- Se aparecer "Limite de links atingido": o plano gratuito do Dub.co permite 1.000 links/mês. A extensão usará is.gd como fallback automaticamente
-- Se aparecer "API key inválida": verifique se o arquivo `config.js` existe e contém uma key válida do Dub.co (ver Passo 2)
-- Se o Dub.co estiver fora do ar, a extensão usará o is.gd como fallback automaticamente
-- Links via is.gd não geram pré-visualização com foto no WhatsApp
+- Verifique se voce esta logado no **mLabs** (publish.mlabs.io) em outra aba do Chrome
+- Se a sessao expirou, faca login novamente no mLabs e tente de novo
 
-### Link sem preview com foto no WhatsApp
-- Verifique se o `config.js` está configurado corretamente (ver Passo 2)
-- Se o rodapé da extensão mostrar "is.gd (fallback)", significa que o Dub.co não foi usado — o is.gd não embute metadados OG
+### Link sem preview com foto no canal do WhatsApp
+- Confirme que o link foi encurtado via mLabs (aparece como mla.bs/...)
+- O mLabs precisa de alguns segundos para processar os metadados; a extensao ja faz isso automaticamente
 
-### Não consigo copiar
-- Certifique-se de que a página está em foco
-- Tente clicar dentro da área de texto antes de copiar
+### Nao consigo copiar
+- Clique dentro da area de texto antes de copiar
+- Certifique-se de que a pagina esta em foco

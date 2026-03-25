@@ -26,7 +26,6 @@ const elements = {
   btnSelectAll: document.getElementById('btn-select-all'),
   btnPrepare: document.getElementById('btn-prepare'),
   previewSection: document.getElementById('preview-section'),
-  previewTitle: document.getElementById('preview-title'),
   previewCounter: document.getElementById('preview-counter'),
   previewMessage: document.getElementById('preview-message'),
   btnCopy: document.getElementById('btn-copy'),
@@ -104,20 +103,10 @@ function updatePreview() {
   const msg = state.preparedMessages[state.currentMessageIndex];
   if (!msg) return;
 
-  elements.previewCounter.textContent = `${state.currentMessageIndex + 1} de ${state.preparedMessages.length}`;
+  elements.previewCounter.textContent =
+    `${state.currentMessageIndex + 1} de ${state.preparedMessages.length}`;
   elements.previewMessage.value = msg.message;
   elements.copyFeedback.classList.add('hidden');
-
-  // Mostra qual encurtador foi usado
-  const sourceLabel = {
-    mlabs: 'mLabs (mla.bs)',
-    isgd: 'is.gd (fallback)',
-    original: 'sem encurtar',
-  };
-  const footerEl = document.querySelector('.footer small');
-  if (footerEl) {
-    footerEl.textContent = `Link encurtado via ${sourceLabel[msg.shortenerSource] || 'desconhecido'}`;
-  }
 }
 
 // === Funções de Dados ===
@@ -144,7 +133,7 @@ async function scanFeed() {
   const feedName = elements.feed.value;
   const feedUrl = FEEDS[feedName];
 
-  showStatus('⏳ Escaneando feed...', 'loading');
+  showStatus('Escaneando feed...', 'loading');
   elements.articlesSection.classList.add('hidden');
 
   try {
@@ -160,7 +149,7 @@ async function scanFeed() {
     state.articles = articles;
     state.selectedArticles = [];
 
-    showStatus(`✅ ${articles.length} matérias encontradas`, 'success');
+    showStatus(`${articles.length} matérias encontradas`, 'success');
     setTimeout(() => {
       hideStatus();
       showArticles();
@@ -168,12 +157,12 @@ async function scanFeed() {
     }, 1000);
 
   } catch (error) {
-    showStatus(`❌ Erro: ${error.message}`, 'error');
+    showStatus(`Erro: ${error.message}`, 'error');
   }
 }
 
 async function prepareMessages() {
-  showStatus('⏳ Preparando mensagens...', 'loading');
+  showStatus('Preparando mensagens...', 'loading');
 
   state.preparedMessages = [];
   state.currentMessageIndex = 0;
@@ -185,40 +174,31 @@ async function prepareMessages() {
   try {
     for (let i = 0; i < selectedArticles.length; i++) {
       const article = selectedArticles[i];
-      showStatus(`⏳ Buscando ${i + 1}/${selectedArticles.length}: ${article.title.substring(0, 30)}...`, 'loading');
+      showStatus(
+        `Preparando ${i + 1}/${selectedArticles.length}: ${article.title.substring(0, 30)}...`,
+        'loading'
+      );
 
-      // Busca detalhes da matéria e encurta o link
       const result = await sendMessageWithTimeout({
         action: 'processArticle',
         article: article,
       }, 45000);
 
       if (result.error) {
-        console.error('Erro ao processar:', result.error);
-        continue;
-      }
-
-      // Avisa se mLabs falhou e usou fallback
-      if (result.shortenerError) {
-        const errorMessages = {
-          'MLABS_NOT_LOGGED_IN': '⚠️ Faça login no mLabs e tente novamente. Usando is.gd.',
-          'MLABS_TOKEN_EXPIRED': '⚠️ Sessão do mLabs expirou. Faça login novamente. Usando is.gd.',
-        };
-        const msg = errorMessages[result.shortenerError] || `⚠️ mLabs erro: ${result.shortenerError}. Usando is.gd.`;
-        showStatus(msg, 'warning');
+        showStatus(`Erro: ${result.error}`, 'error');
         await new Promise(r => setTimeout(r, 3000));
+        continue;
       }
 
       state.preparedMessages.push({
         article: article,
         message: result.message,
         shortUrl: result.shortUrl,
-        shortenerSource: result.shortenerSource || 'unknown',
       });
     }
 
     if (state.preparedMessages.length === 0) {
-      showStatus('❌ Nenhuma mensagem preparada', 'error');
+      showStatus('Nenhuma mensagem preparada', 'error');
       return;
     }
 
@@ -227,7 +207,7 @@ async function prepareMessages() {
     updatePreview();
 
   } catch (error) {
-    showStatus(`❌ Erro: ${error.message}`, 'error');
+    showStatus(`Erro: ${error.message}`, 'error');
   }
 }
 
@@ -238,14 +218,12 @@ async function copyMessage() {
     await navigator.clipboard.writeText(message);
     elements.copyFeedback.classList.remove('hidden');
 
-    // Avança para próxima após 1.5s
     setTimeout(() => {
       if (state.currentMessageIndex < state.preparedMessages.length - 1) {
         state.currentMessageIndex++;
         updatePreview();
       } else {
-        // Última mensagem - volta para lista
-        showStatus('✅ Todas as mensagens foram processadas!', 'success');
+        showStatus('Todas as mensagens foram processadas!', 'success');
         showArticles();
         state.selectedArticles = [];
         updateArticlesList();
@@ -275,10 +253,8 @@ function goBack() {
 
 function selectAll() {
   if (state.selectedArticles.length === state.articles.length) {
-    // Desseleciona todas
     state.selectedArticles = [];
   } else {
-    // Seleciona todas
     state.selectedArticles = state.articles.map((_, i) => i);
   }
   updateArticlesList();
@@ -293,7 +269,6 @@ elements.btnCopy.addEventListener('click', copyMessage);
 elements.btnSkip.addEventListener('click', skipMessage);
 elements.btnBack.addEventListener('click', goBack);
 
-// Permite editar a mensagem
 elements.previewMessage.addEventListener('input', () => {
   if (state.preparedMessages[state.currentMessageIndex]) {
     state.preparedMessages[state.currentMessageIndex].message = elements.previewMessage.value;

@@ -1,230 +1,107 @@
-# Disparos
+# Disparos Folha
 
-Extensão para Google Chrome que automatiza a preparação de mensagens para WhatsApp a partir de matérias da Folha de S.Paulo.
+Extensao para Google Chrome que prepara mensagens de WhatsApp a partir de materias da Folha de S.Paulo, com link encurtado via mLabs (mla.bs).
 
-## O que a extensão faz
+## O que faz
 
-1. Lê o feed RSS público da Folha para listar as matérias mais recentes de uma editoria
-2. O operador seleciona quais matérias deseja disparar
-3. Para cada matéria selecionada, a extensão abre a página em segundo plano, extrai título, subtítulos (linhas finas) e metadados OG (título, descrição, imagem), encurta o link via Dub.co (dub.sh) com os metadados embutidos e formata a mensagem no padrão WhatsApp
-4. O operador revisa, edita se necessário, e copia para a área de transferência
+1. Le o feed RSS publico da Folha para listar as materias mais recentes de uma editoria
+2. O operador seleciona quais materias deseja disparar
+3. Para cada materia, a extensao abre a pagina em segundo plano, extrai titulo e subtitulos (linhas finas), encurta o link via mLabs e formata a mensagem
+4. O operador revisa, edita se necessario, e copia para colar no WhatsApp
 
-O resultado é uma mensagem pronta como:
+Resultado:
 
 ```
-*PSD, União e PL ensaiam aliança para derrotar candidato de Motta e Lula ao TCU*
-• _O petista Odair Cunha é apoiado pelo presidente da Câmara, como parte de acordo com o PT_
-• _Ala do centrão diz não ter compromisso com entendimento e busca bolsonaristas_
-https://dub.sh/aBcDeF
+*Titulo da materia*
+- _Primeiro subtitulo extraido da pagina_
+- _Segundo subtitulo extraido da pagina_
+https://mla.bs/abc123
 ```
 
-## Instalação
+## Pre-requisitos
 
-Ver arquivo [extension/INSTALACAO.md](extension/INSTALACAO.md) para instruções detalhadas.
+- **Google Chrome** com modo desenvolvedor ativado
+- **Conta no mLabs** (publish.mlabs.io) — a extensao usa o cookie de sessao do mLabs para encurtar links. Basta estar logado no mLabs em outra aba.
 
-Resumo:
+## Instalacao
 
-1. Abrir `chrome://extensions`
-2. Ativar "Modo do desenvolvedor"
-3. Clicar em "Carregar sem compactação"
-4. Selecionar a pasta `extension/`
+1. Baixe o ZIP deste repositorio (Code > Download ZIP)
+2. Extraia o ZIP
+3. Abra `chrome://extensions` no Chrome
+4. Ative o **Modo do desenvolvedor** (canto superior direito)
+5. Clique em **Carregar sem compactacao**
+6. Selecione a pasta `extension/` (dentro de `disparos-main/disparos-main/`)
 
-### Configurar a API key do Dub.co
-
-O arquivo `extension/config.js` contém a API key e **não é versionado** (está no `.gitignore`). Para configurar:
-
-1. Copiar o exemplo: `cp extension/config.example.js extension/config.js`
-2. Editar `extension/config.js` e inserir a API key real do Dub.co
-
-```js
-const CONFIG = {
-  DUB_API_KEY: "dub_SuaChaveAqui"
-};
-```
-
-## Pré-requisitos
-
-- **Dub.co**: Os links são encurtados via [Dub.co](https://dub.co) (domínio dub.sh), que embute metadados OG (título, descrição, imagem) diretamente no link curto. Isso garante pré-visualização com foto no WhatsApp.
-- O arquivo `extension/config.js` deve existir com a API key configurada (ver seção Instalação acima).
-- O plano gratuito do Dub.co permite até 1.000 links/mês. Se o limite for atingido, a extensão usa is.gd como fallback (sem preview com foto).
+Para atualizar: baixe o ZIP novo, substitua a pasta, e clique no botao de recarregar na pagina de extensoes.
 
 ## Como usar
 
-1. Clicar no ícone da extensão na barra do navegador
-2. Escolher a editoria (Política, Economia, etc.)
-3. Clicar em "Escanear"
-4. Marcar as matérias desejadas
-5. Clicar em "Preparar selecionadas"
-6. Revisar a mensagem (é possível editar o texto diretamente)
-7. Clicar em "Copiar"
-8. Colar no WhatsApp (Ctrl+V)
+1. Faca login no **mLabs** (publish.mlabs.io) em uma aba do Chrome
+2. Clique no icone da extensao na barra do navegador
+3. Escolha a editoria (Politica, Economia, Mundo, Cotidiano, Esporte)
+4. Clique em **Escanear**
+5. Marque as materias desejadas
+6. Clique em **Preparar selecionadas** (demora alguns segundos por materia)
+7. Revise a mensagem (pode editar o texto)
+8. Clique em **Copiar** e cole no WhatsApp
 
-A extensão avança automaticamente para a próxima matéria após a cópia.
+A extensao avanca automaticamente para a proxima materia apos copiar.
 
-## Editorias disponíveis
+## Editorias disponiveis
 
 | Editoria | Feed RSS |
 |---|---|
-| Política | `feeds.folha.uol.com.br/poder/rss091.xml` |
-| Economia | `feeds.folha.uol.com.br/mercado/rss091.xml` |
-| Mundo | `feeds.folha.uol.com.br/mundo/rss091.xml` |
-| Cotidiano | `feeds.folha.uol.com.br/cotidiano/rss091.xml` |
-| Esporte | `feeds.folha.uol.com.br/esporte/rss091.xml` |
-
----
-
-## Arquitetura técnica
-
-### Componentes
-
-| Arquivo | Função |
-|---|---|
-| `manifest.json` | Declaração da extensão (Manifest V3), permissões e pontos de entrada |
-| `background.js` | Service worker. Busca o feed RSS, coordena a extração de cada página, encurta URLs via Dub.co (com fallback is.gd) |
-| `config.js` | API keys (não versionado — ver `.gitignore`). Criado a partir de `config.example.js` |
-| `config.example.js` | Template para `config.js` com placeholders |
-| `content-extractor.js` | Script injetado nas páginas da Folha para extrair título, subtítulos e metadados OG via DOM |
-| `popup.html` | Interface do operador |
-| `popup.js` | Lógica da interface: listagem, seleção, prévia e cópia |
-| `styles.css` | Estilos da interface |
-
-### Fluxo de execução detalhado
-
-```
-Operador clica em "Escanear"
-        |
-        v
-popup.js envia mensagem ao background.js
-        |
-        v
-background.js faz fetch do feed RSS (ex: feeds.folha.uol.com.br/poder/rss091.xml)
-        |
-        v
-background.js parseia o XML com regex e retorna lista de {título, link}
-        |
-        v
-popup.js exibe a lista. Operador seleciona matérias e clica "Preparar"
-        |
-        v
-Para cada matéria selecionada, sequencialmente:
-   1. background.js abre aba em segundo plano (chrome.tabs.create, active: false)
-   2. Aguarda carregamento completo da página (timeout de 15 segundos)
-   3. Injeta content-extractor.js via chrome.scripting.executeScript
-   4. content-extractor.js consulta o DOM da página e retorna subtítulos + metadados OG (título, descrição, imagem)
-   5. background.js fecha a aba imediatamente
-   6. background.js limpa a URL e adiciona parâmetros UTM de rastreamento
-   7. background.js encurta a URL via API do Dub.co (dub.sh) passando os metadados OG, com fallback para is.gd
-   8. background.js monta a mensagem formatada
-        |
-        v
-popup.js exibe a prévia editável. Operador revisa e clica "Copiar"
-        |
-        v
-Mensagem copiada para a área de transferência via navigator.clipboard.writeText
-```
-
-### Permissões declaradas no manifest
-
-| Permissão | Justificativa |
-|---|---|
-| `activeTab` | Acesso à aba ativa para operações de clipboard |
-| `clipboardWrite` | Copiar mensagem formatada para a área de transferência |
-| `scripting` | Injetar o content-extractor.js nas páginas da Folha para leitura do DOM |
-| `tabs` | Criar e fechar abas em segundo plano durante a extração |
-| `host: *.folha.uol.com.br` | Acessar feeds RSS e páginas de matérias da Folha |
-| `host: api.dub.co` | Chamar a API de encurtamento de URLs do Dub.co |
-| `host: is.gd` | Chamar a API de encurtamento de URLs (fallback) |
-
-A extensão **não solicita** permissões amplas como `<all_urls>`, `webRequest`, `history` ou `cookies`.
-
-### Extração de subtítulos (content-extractor.js)
-
-O script injetado na página tenta os seguintes seletores CSS em cascata, parando no primeiro que retornar ao menos 2 itens:
-
-1. `.c-news__subheadline li` — padrão atual da Folha
-2. `.summary li`
-3. `.bullets li`
-4. `[class*="bullet"] li`
-5. `[class*="linha-fina"] li`
-6. `article header ul li`
-7. `article .summary ul li`
-8. `main .summary li`
-9. `article ul li`
-10. `main ul li`
-
-Se nenhum seletor retornar resultado, o fallback é a meta tag `og:description` da página.
-
-### Parâmetros UTM
-
-Todas as URLs recebem os seguintes parâmetros antes do encurtamento:
-
-```
-utm_source=whatsapp
-utm_medium=social
-utm_campaign=wppcfolhapol
-```
-
-Isso permite rastrear no analytics da Folha o tráfego originado por esses disparos.
-
-### Serviços externos utilizados
-
-| Serviço | Uso | Dados enviados |
-|---|---|---|
-| feeds.folha.uol.com.br | Leitura do feed RSS (público, sem autenticação) | Nenhum dado do operador |
-| www1.folha.uol.com.br | Carregamento das páginas de matérias para extração | Cookies do navegador do operador (sessão da Folha) |
-| api.dub.co | Encurtamento de URL (primário) com metadados OG | URL da matéria + título + descrição + imagem OG |
-| is.gd | Encurtamento de URL (fallback) | Apenas a URL da matéria |
-
----
-
-### Privacidade e dados
-
-- A extensão **não coleta, armazena ou transmite dados do operador**
-- Não há backend, banco de dados ou servidor próprio
-- As requisições externas são para `folha.uol.com.br` (feed e páginas), `api.dub.co` (encurtamento primário) e `is.gd` (encurtamento fallback)
-- Os metadados OG enviados ao Dub.co (título, descrição, imagem) são públicos — são os mesmos que qualquer crawler veria ao acessar a página da Folha
-- As mensagens existem apenas na memória local do navegador enquanto o popup está aberto. Ao fechar, são descartadas
-- Nenhum dado de navegação ou histórico é acessado
-
-### Distribuição
-A extensão não está publicada na Chrome Web Store. É instalada manualmente via modo desenvolvedor ("Carregar sem compactação"). Isso significa:
-
-- **Não passa por revisão automatizada do Google.** O código-fonte, no entanto, é aberto e auditável neste repositório.
-- **O Chrome pode exibir avisos** sobre extensões em modo desenvolvedor a cada inicialização. Isso é normal e esperado.
-- **Atualizações não são automáticas.** Para atualizar, é necessário baixar a nova versão e recarregar na página de extensões.
-
----
-
-## Limitações
-
-- Opera exclusivamente com matérias da Folha de S.Paulo
-- A mensagem é copiada para a área de transferência; o envio no WhatsApp é manual (colar e enviar)
-- O feed RSS retorna as matérias mais recentes, sem controle de data ou busca por palavra-chave
-- Limite de 15 matérias por escaneamento
-- O Dub.co tem limite de 1.000 links/mês no plano gratuito
-- Se o limite for atingido ou a API estiver fora do ar, a extensão usa is.gd como fallback (sem preview com foto no WhatsApp)
-- O link encurtado via is.gd não funciona para disparos feitos pelo navegador Edge. Funciona no Chrome e Mozilla.
+| Politica | feeds.folha.uol.com.br/poder/rss091.xml |
+| Economia | feeds.folha.uol.com.br/mercado/rss091.xml |
+| Mundo | feeds.folha.uol.com.br/mundo/rss091.xml |
+| Cotidiano | feeds.folha.uol.com.br/cotidiano/rss091.xml |
+| Esporte | feeds.folha.uol.com.br/esporte/rss091.xml |
 
 ## Estrutura de arquivos
 
-A pasta `extension/` é a que deve ser carregada no Chrome. Os demais arquivos na raiz são apenas documentação e configuração do repositório.
+```
+extension/           <- pasta que deve ser carregada no Chrome
+  manifest.json      # Configuracao da extensao (Manifest V3)
+  background.js      # Service worker: feed RSS, extracao de paginas, encurtamento
+  content-extractor.js  # Script injetado nas paginas da Folha para extrair subtitulos
+  popup.html         # Interface do operador
+  popup.js           # Logica da interface
+  styles.css         # Estilos visuais
+  icons/             # Icones da extensao
+```
 
-```
-disparos/
-├── extension/                    ← carregar esta pasta no Chrome
-│   ├── manifest.json             # Configuração da extensão
-│   ├── background.js             # Service worker (feed, tabs, URLs)
-│   ├── config.js                 # API keys (NÃO commitado, ver .gitignore)
-│   ├── config.example.js         # Template para config.js
-│   ├── content-extractor.js      # Extração de subtítulos e metadados OG via DOM
-│   ├── popup.html                # Interface do operador
-│   ├── popup.js                  # Lógica da interface
-│   ├── styles.css                # Estilos visuais
-│   ├── icons/                    # Ícones da extensão
-│   │   ├── icon.svg
-│   │   └── generate-icons.html   # Gerador de PNGs a partir do SVG
-│   └── INSTALACAO.md             # Instruções de instalação passo a passo
-├── .gitignore
-├── README.md
-└── LICENSE
-```
+## Como funciona (tecnico)
+
+1. **Feed RSS**: o background.js faz fetch do XML, parseia com regex (service workers nao tem DOMParser) e retorna ate 15 materias
+2. **Extracao**: para cada materia, abre uma aba invisivel, injeta o content-extractor.js que le o DOM da pagina (seletores CSS em cascata) e retorna titulo + subtitulos + metadados OG
+3. **URL**: extrai a URL real da Folha (o feed usa redirects via redir.folha.com.br), limpa parametros UTM existentes e adiciona UTM proprio (whatsapp/social/wppcfolhapol)
+4. **Encurtamento**: envia a URL limpa para a API interna do mLabs (core-api.mlabs.io), que gera um link mla.bs. Apos criar, acessa o link para forcar o cache dos metadados OG
+5. **Mensagem**: monta o texto no formato WhatsApp (titulo em negrito, subtitulos em italico, link)
+
+### Permissoes
+
+| Permissao | Motivo |
+|---|---|
+| activeTab | Acesso a aba ativa para clipboard |
+| clipboardWrite | Copiar mensagem |
+| scripting | Injetar content-extractor.js nas paginas |
+| tabs | Criar/fechar abas em segundo plano |
+| cookies | Ler cookie de sessao do mLabs |
+| host: *.folha.uol.com.br | Feed RSS e paginas |
+| host: *.mlabs.io | API de encurtamento |
+| host: mla.bs | Aquecimento do link curto |
+
+## Limitacoes
+
+- Opera exclusivamente com materias da Folha de S.Paulo
+- A mensagem e copiada; o envio no WhatsApp e manual
+- Limite de 15 materias por escaneamento
+- Requer sessao ativa no mLabs (login em outra aba)
+- Se a sessao expirar, a extensao mostra erro e pede novo login
+
+## Privacidade
+
+- Nao coleta, armazena ou transmite dados do operador
+- Nao tem backend ou banco de dados
+- Os dados acessados (feed RSS, paginas, metadados OG) sao publicos
+- As mensagens existem apenas na memoria do navegador enquanto o popup esta aberto

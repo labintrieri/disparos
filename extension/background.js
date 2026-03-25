@@ -1,21 +1,11 @@
 // Service Worker - processa requests em background
 // Usa tabs + content script injection para extrair linhas finas das páginas
 
-// Garante que CONFIG existe antes de carregar config.js
-var CONFIG = {};
-
-// Carrega configuração com API keys (config.js é opcional)
-try {
-  importScripts('config.js');
-} catch {
-  // config.js não existe - usa valores padrão
-}
-
 // Escuta mensagens do popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'fetchFeed') {
     fetchFeed(request.url).then(sendResponse);
-    return true; // Indica resposta assíncrona
+    return true;
   }
 
   if (request.action === 'processArticle') {
@@ -27,64 +17,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // === Buscar Feed RSS ===
 async function fetchFeed(feedUrl) {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(feedUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const buffer = await response.arrayBuffer();
     let text;
 
-    // Tenta fetch direto primeiro (requer host_permissions)
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch(feedUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const buffer = await response.arrayBuffer();
-
-      // Tenta UTF-8 primeiro
-      try {
-        const decoder = new TextDecoder('utf-8', { fatal: true });
-        text = decoder.decode(buffer);
-      } catch {
-        const decoder = new TextDecoder('iso-8859-1');
-        text = decoder.decode(buffer);
-      }
-    } catch (directError) {
-      console.warn('Fetch direto falhou, tentando proxy CORS:', directError.message);
-
-      // Fallback: usa allorigins como proxy CORS
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch(proxyUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Proxy HTTP ${response.status}`);
-      }
-
-      text = await response.text();
+      text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    } catch {
+      text = new TextDecoder('iso-8859-1').decode(buffer);
     }
 
     // Parsing XML com regex (service worker não tem DOMParser)
     const articles = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     let match;
-    let count = 0;
 
-    while ((match = itemRegex.exec(text)) !== null && count < 15) {
-      const itemContent = match[1];
-
-      const title = extractTag(itemContent, 'title');
-      const link = extractTag(itemContent, 'link');
-      const description = extractTag(itemContent, 'description');
+    while ((match = itemRegex.exec(text)) !== null && articles.length < 15) {
+      const item = match[1];
+      const title = extractTag(item, 'title');
+      const link = extractTag(item, 'link');
+      const description = extractTag(item, 'description');
 
       if (title && link) {
         articles.push({ title, link, description });
-        count++;
       }
     }
 
@@ -97,135 +61,82 @@ async function fetchFeed(feedUrl) {
 
 // Extrai conteúdo de uma tag XML
 function extractTag(xml, tagName) {
-  const regex = new RegExp(`<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>|<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+  const regex = new RegExp(
+    `<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>` +
+    `|<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i'
+  );
   const match = xml.match(regex);
-  if (match) {
-    // Retorna CDATA ou conteúdo normal
-    const content = match[1] || match[2] || '';
-    // Remove tags HTML residuais e decodifica entidades
-    return decodeHTMLEntities(content.replace(/<[^>]*>/g, '').trim());
-  }
-  return '';
+  if (!match) return '';
+  const content = match[1] || match[2] || '';
+  return decodeHTMLEntities(content.replace(/<[^>]*>/g, '').trim());
 }
 
-// Decodifica entidades HTML
+// Decodifica entidades HTML comuns em português
 function decodeHTMLEntities(text) {
-  // Entidades nomeadas comuns
   const entities = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&#39;': "'",
-    '&apos;': "'",
-    '&nbsp;': ' ',
-    '&ccedil;': 'ç',
-    '&Ccedil;': 'Ç',
-    '&atilde;': 'ã',
-    '&Atilde;': 'Ã',
-    '&otilde;': 'õ',
-    '&Otilde;': 'Õ',
-    '&aacute;': 'á',
-    '&Aacute;': 'Á',
-    '&eacute;': 'é',
-    '&Eacute;': 'É',
-    '&iacute;': 'í',
-    '&Iacute;': 'Í',
-    '&oacute;': 'ó',
-    '&Oacute;': 'Ó',
-    '&uacute;': 'ú',
-    '&Uacute;': 'Ú',
-    '&acirc;': 'â',
-    '&Acirc;': 'Â',
-    '&ecirc;': 'ê',
-    '&Ecirc;': 'Ê',
-    '&ocirc;': 'ô',
-    '&Ocirc;': 'Ô',
-    '&agrave;': 'à',
-    '&Agrave;': 'À',
+    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+    '&#39;': "'", '&apos;': "'", '&nbsp;': ' ',
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+    '&atilde;': 'ã', '&Atilde;': 'Ã', '&otilde;': 'õ', '&Otilde;': 'Õ',
+    '&aacute;': 'á', '&Aacute;': 'Á', '&eacute;': 'é', '&Eacute;': 'É',
+    '&iacute;': 'í', '&Iacute;': 'Í', '&oacute;': 'ó', '&Oacute;': 'Ó',
+    '&uacute;': 'ú', '&Uacute;': 'Ú',
+    '&acirc;': 'â', '&Acirc;': 'Â', '&ecirc;': 'ê', '&Ecirc;': 'Ê',
+    '&ocirc;': 'ô', '&Ocirc;': 'Ô', '&agrave;': 'à', '&Agrave;': 'À',
   };
 
-  // Primeiro substitui entidades nomeadas
-  let result = text.replace(/&[a-zA-Z]+;/g, match => entities[match] || match);
-
-  // Depois decodifica entidades numéricas decimais (&#123;)
-  result = result.replace(/&#(\d+);/g, (match, num) => {
-    return String.fromCharCode(parseInt(num, 10));
-  });
-
-  // Decodifica entidades numéricas hexadecimais (&#x1F;)
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-    return String.fromCharCode(parseInt(hex, 16));
-  });
-
+  let result = text.replace(/&[a-zA-Z]+;/g, m => entities[m] || m);
+  result = result.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)));
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
   return result;
 }
 
 // === Processar Artigo ===
 async function processArticle(article) {
   try {
-    // 1. Busca a página real e extrai linhas finas + metadados OG
     const pageData = await extractPageData(article.link);
-
-    // 2. Limpa e adiciona UTM à URL
     const cleanedUrl = cleanUrl(article.link);
+    const shortUrl = await shortenWithMlabs(cleanedUrl);
+    const message = formatMessage(article.title, pageData.bullets, shortUrl);
 
-    // 3. Encurta a URL
-    const shortened = await shortenUrl(cleanedUrl);
-
-    // 4. Monta a mensagem
-    const message = formatMessage(article.title, pageData.bullets, shortened.url);
-
-    return {
-      message,
-      shortUrl: shortened.url,
-      shortenerSource: shortened.source,
-      shortenerError: shortened.error || null
-    };
-
+    return { message, shortUrl };
   } catch (error) {
     return { error: error.message };
   }
 }
 
-// === Buscar página e extrair linhas finas + metadados OG via tab injection ===
+// === Extrair dados da página via tab injection ===
 async function extractPageData(url) {
   const empty = { title: '', bullets: [], description: '', ogImage: '' };
   let tabId = null;
+
   try {
-    // Abre aba em background (não ativa)
     const tab = await chrome.tabs.create({ url, active: false });
     tabId = tab.id;
 
-    // Espera a página carregar
     await waitForTabLoad(tabId);
 
-    // Injeta o content-extractor.js na página
     const results = await chrome.scripting.executeScript({
       target: { tabId },
       files: ['content-extractor.js'],
     });
 
-    // Fecha a aba
     await chrome.tabs.remove(tabId);
     tabId = null;
 
-    // Pega o resultado do script injetado
     if (results && results[0] && results[0].result) {
       const r = results[0].result;
       return {
         title: r.title || '',
         bullets: r.bullets || [],
         description: r.description || '',
-        ogImage: r.ogImage || ''
+        ogImage: r.ogImage || '',
       };
     }
 
     return empty;
-
   } catch (error) {
     console.error('Erro ao extrair dados da página:', error.message);
-    // Garante que a aba seja fechada em caso de erro
     if (tabId) {
       try { await chrome.tabs.remove(tabId); } catch {}
     }
@@ -238,7 +149,7 @@ function waitForTabLoad(tabId, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);
-      resolve(); // Resolve mesmo com timeout para tentar extrair o que tiver
+      resolve();
     }, timeoutMs);
 
     function listener(updatedTabId, changeInfo) {
@@ -251,7 +162,6 @@ function waitForTabLoad(tabId, timeoutMs = 15000) {
 
     chrome.tabs.onUpdated.addListener(listener);
 
-    // Verifica se já está carregada
     chrome.tabs.get(tabId).then(tab => {
       if (tab.status === 'complete') {
         clearTimeout(timeout);
@@ -281,23 +191,22 @@ function cleanUrl(url) {
   cleaned = cleaned.replace(/\/amp\/?$/, '');
   cleaned = cleaned.replace(/\?$/, '');
 
-  // Adiciona UTM próprio
   const separator = cleaned.includes('?') ? '&' : '?';
   return `${cleaned}${separator}utm_source=whatsapp&utm_medium=social&utm_campaign=wppcfolhapol`;
 }
 
-// === Encurtar URL via mLabs (pega token do cookie) ===
+// === Encurtar URL via mLabs ===
 async function shortenWithMlabs(url) {
-  // Cookie fica no domínio .mlabs.io
   const cookie = await chrome.cookies.get({
     url: "https://publish.mlabs.io",
     name: "authApiToken"
   });
 
-  if (!cookie) throw new Error("MLABS_NOT_LOGGED_IN");
+  if (!cookie) {
+    throw new Error("Faça login no mLabs (publish.mlabs.io) e tente novamente.");
+  }
 
   const token = decodeURIComponent(cookie.value);
-  console.log('[mLabs] Token encontrado, encurtando:', url);
 
   const response = await fetch("https://core-api.mlabs.io/social/link/short", {
     method: "POST",
@@ -313,71 +222,24 @@ async function shortenWithMlabs(url) {
     body: `link=${encodeURIComponent(url)}`
   });
 
-  console.log('[mLabs] Status:', response.status);
-
   if (response.status === 401 || response.status === 403) {
-    throw new Error("MLABS_TOKEN_EXPIRED");
+    throw new Error("Sessão do mLabs expirou. Faça login novamente.");
   }
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    console.error('[mLabs] Erro:', body);
-    throw new Error(`MLABS_ERROR (${response.status}): ${body}`);
+    throw new Error(`mLabs erro (${response.status}): ${body}`);
   }
 
   const data = await response.json();
-  console.log('[mLabs] Link criado:', data.short_link);
 
-  // Aquece o link: acessa para forçar o mLabs a cachear os metadados OG
+  // Aquece o link para o mLabs cachear os metadados OG
   try {
-    console.log('[mLabs] Aquecendo link...');
     await fetch(data.short_link, { redirect: 'follow' });
     await new Promise(r => setTimeout(r, 3000));
-    console.log('[mLabs] Link aquecido');
-  } catch (e) {
-    console.warn('[mLabs] Erro no aquecimento (ignorado):', e.message);
-  }
+  } catch {}
 
   return data.short_link;
-}
-
-// === Encurtar URL via is.gd (fallback) ===
-async function shortenWithIsgd(url) {
-  const response = await fetch(
-    `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
-  );
-
-  if (!response.ok) {
-    throw new Error('is.gd error');
-  }
-
-  const shortUrl = await response.text();
-
-  if (!shortUrl.startsWith('http')) {
-    throw new Error('Invalid is.gd response');
-  }
-
-  return shortUrl.trim();
-}
-
-// === Encurtar URL (mLabs > is.gd > original) ===
-async function shortenUrl(url) {
-  // 1. Tenta mLabs primeiro (melhor preview no WhatsApp)
-  try {
-    const shortUrl = await shortenWithMlabs(url);
-    return { url: shortUrl, source: 'mlabs' };
-  } catch (mlabsError) {
-    console.warn('[Shortener] mLabs falhou:', mlabsError.message);
-
-    // 2. Tenta is.gd como fallback
-    try {
-      const shortUrl = await shortenWithIsgd(url);
-      return { url: shortUrl, source: 'isgd', error: mlabsError.message };
-    } catch {
-      // 3. Último recurso: URL original
-      return { url, source: 'original', error: mlabsError.message };
-    }
-  }
 }
 
 // === Formatar Mensagem ===
@@ -389,7 +251,6 @@ function formatMessage(title, bullets, url) {
   }
 
   if (bullets.length > 0) {
-    // Bullets em itálico (usando _ do WhatsApp)
     parts.push(bullets.map(b => `• _${b}_`).join('\n'));
   }
 
