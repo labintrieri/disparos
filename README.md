@@ -29,9 +29,23 @@ Resumo:
 3. Clicar em "Carregar sem compactação"
 4. Selecionar a pasta `extension/`
 
+### Configurar a API key do Dub.co
+
+O arquivo `extension/config.js` contém a API key e **não é versionado** (está no `.gitignore`). Para configurar:
+
+1. Copiar o exemplo: `cp extension/config.example.js extension/config.js`
+2. Editar `extension/config.js` e inserir a API key real do Dub.co
+
+```js
+const CONFIG = {
+  DUB_API_KEY: "dub_SuaChaveAqui"
+};
+```
+
 ## Pré-requisitos
 
-- **Dub.co**: Os links são encurtados via [Dub.co](https://dub.co) (domínio dub.sh), que embute metadados OG (título, descrição, imagem) diretamente no link curto. Isso garante pré-visualização com foto no WhatsApp. A API key já está configurada na extensão.
+- **Dub.co**: Os links são encurtados via [Dub.co](https://dub.co) (domínio dub.sh), que embute metadados OG (título, descrição, imagem) diretamente no link curto. Isso garante pré-visualização com foto no WhatsApp.
+- O arquivo `extension/config.js` deve existir com a API key configurada (ver seção Instalação acima).
 - O plano gratuito do Dub.co permite até 1.000 links/mês. Se o limite for atingido, a extensão usa is.gd como fallback (sem preview com foto).
 
 ## Como usar
@@ -197,7 +211,9 @@ disparos/
 ├── extension/                    ← carregar esta pasta no Chrome
 │   ├── manifest.json             # Configuração da extensão
 │   ├── background.js             # Service worker (feed, tabs, URLs)
-│   ├── content-extractor.js      # Extração de subtítulos via DOM
+│   ├── config.js                 # API keys (NÃO commitado, ver .gitignore)
+│   ├── config.example.js         # Template para config.js
+│   ├── content-extractor.js      # Extração de subtítulos e metadados OG via DOM
 │   ├── popup.html                # Interface do operador
 │   ├── popup.js                  # Lógica da interface
 │   ├── styles.css                # Estilos visuais
@@ -205,6 +221,7 @@ disparos/
 │   │   ├── icon.svg
 │   │   └── generate-icons.html   # Gerador de PNGs a partir do SVG
 │   └── INSTALACAO.md             # Instruções de instalação passo a passo
+├── .gitignore
 ├── README.md
 └── LICENSE
 ```
