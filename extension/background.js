@@ -20,24 +20,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // === Buscar Feed RSS ===
 async function fetchFeed(feedUrl) {
   try {
-    const response = await fetch(feedUrl);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    // Lê como bytes e decodifica como UTF-8 (com fallback para ISO-8859-1)
-    const buffer = await response.arrayBuffer();
     let text;
 
-    // Tenta UTF-8 primeiro
+    // Tenta fetch direto primeiro (requer host_permissions)
     try {
-      const decoder = new TextDecoder('utf-8', { fatal: true });
-      text = decoder.decode(buffer);
-    } catch {
-      // Se falhar, tenta ISO-8859-1 (Latin-1)
-      const decoder = new TextDecoder('iso-8859-1');
-      text = decoder.decode(buffer);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(feedUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      // Tenta UTF-8 primeiro
+      try {
+        const decoder = new TextDecoder('utf-8', { fatal: true });
+        text = decoder.decode(buffer);
+      } catch {
+        const decoder = new TextDecoder('iso-8859-1');
+        text = decoder.decode(buffer);
+      }
+    } catch (directError) {
+      console.warn('Fetch direto falhou, tentando proxy CORS:', directError.message);
+
+      // Fallback: usa allorigins como proxy CORS
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(proxyUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Proxy HTTP ${response.status}`);
+      }
+
+      text = await response.text();
     }
 
     // Parsing XML com regex (service worker não tem DOMParser)
