@@ -1,16 +1,14 @@
 // Service Worker - processa requests em background
 // Usa tabs + content script injection para extrair linhas finas das páginas
 
+// Garante que CONFIG existe antes de carregar config.js
+var CONFIG = {};
+
 // Carrega configuração com API keys (config.js é opcional)
 try {
   importScripts('config.js');
 } catch {
   // config.js não existe - usa valores padrão
-}
-
-// Garante que CONFIG existe mesmo sem config.js
-if (typeof CONFIG === 'undefined') {
-  var CONFIG = {};
 }
 
 // Escuta mensagens do popup
