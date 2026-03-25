@@ -69,6 +69,7 @@ A extensão avança automaticamente para a próxima matéria após a cópia.
 | Economia | `feeds.folha.uol.com.br/mercado/rss091.xml` |
 | Mundo | `feeds.folha.uol.com.br/mundo/rss091.xml` |
 | Cotidiano | `feeds.folha.uol.com.br/cotidiano/rss091.xml` |
+| Esporte | `feeds.folha.uol.com.br/esporte/rss091.xml` |
 
 ---
 
@@ -80,6 +81,8 @@ A extensão avança automaticamente para a próxima matéria após a cópia.
 |---|---|
 | `manifest.json` | Declaração da extensão (Manifest V3), permissões e pontos de entrada |
 | `background.js` | Service worker. Busca o feed RSS, coordena a extração de cada página, encurta URLs via Dub.co (com fallback is.gd) |
+| `config.js` | API keys (não versionado — ver `.gitignore`). Criado a partir de `config.example.js` |
+| `config.example.js` | Template para `config.js` com placeholders |
 | `content-extractor.js` | Script injetado nas páginas da Folha para extrair título, subtítulos e metadados OG via DOM |
 | `popup.html` | Interface do operador |
 | `popup.js` | Lógica da interface: listagem, seleção, prévia e cópia |
@@ -174,7 +177,7 @@ Isso permite rastrear no analytics da Folha o tráfego originado por esses dispa
 
 ---
 
-### 5. Privacidade e dados
+### Privacidade e dados
 
 - A extensão **não coleta, armazena ou transmite dados do operador**
 - Não há backend, banco de dados ou servidor próprio
@@ -183,7 +186,7 @@ Isso permite rastrear no analytics da Folha o tráfego originado por esses dispa
 - As mensagens existem apenas na memória local do navegador enquanto o popup está aberto. Ao fechar, são descartadas
 - Nenhum dado de navegação ou histórico é acessado
 
-### 6. Distribuição 
+### Distribuição
 A extensão não está publicada na Chrome Web Store. É instalada manualmente via modo desenvolvedor ("Carregar sem compactação"). Isso significa:
 
 - **Não passa por revisão automatizada do Google.** O código-fonte, no entanto, é aberto e auditável neste repositório.

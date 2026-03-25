@@ -17,15 +17,34 @@ extension/
 
 ---
 
-## Passo 2: Instalar no Chrome
+## Passo 2: Configurar a API key
 
-### 2.1 Abrir página de extensões
+A extensão usa o [Dub.co](https://dub.co) para encurtar links com metadados OG (preview com foto no WhatsApp). A API key fica em um arquivo separado que não é versionado.
+
+1. Na pasta `extension/`, copie o arquivo de exemplo:
+   ```
+   cp config.example.js config.js
+   ```
+2. Abra `config.js` e substitua o placeholder pela API key real:
+   ```js
+   const CONFIG = {
+     DUB_API_KEY: "dub_SuaChaveAqui"
+   };
+   ```
+
+> Sem esse arquivo, a extensão vai usar o is.gd como fallback (sem preview com foto).
+
+---
+
+## Passo 3: Instalar no Chrome
+
+### 3.1 Abrir página de extensões
 
 1. Abra o Chrome
 2. Digite na barra de endereço: `chrome://extensions`
 3. Aperte Enter
 
-### 2.2 Ativar modo desenvolvedor
+### 3.2 Ativar modo desenvolvedor
 
 No canto superior direito, ative o botão **"Modo do desenvolvedor"**
 
@@ -36,19 +55,19 @@ No canto superior direito, ative o botão **"Modo do desenvolvedor"**
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 2.3 Carregar a extensão
+### 3.3 Carregar a extensão
 
 1. Clique no botão **"Carregar sem compactação"**
 2. Navegue até a pasta `extension/`
 3. Clique em **"Selecionar pasta"**
 
-### 2.4 Pronto!
+### 3.4 Pronto!
 
 A extensão aparecerá na lista e um ícone 📰 surgirá na barra do navegador.
 
 ---
 
-## Passo 3: Fixar a extensão (opcional)
+## Passo 4: Fixar a extensão (opcional)
 
 Para o ícone ficar sempre visível:
 
@@ -115,10 +134,14 @@ O processo é idêntico ao Chrome:
 - O site da Folha pode estar temporariamente fora do ar
 
 ### Erro ao encurtar link
-- Se aparecer "Limite de links atingido": o plano gratuito do Dub.co permite 1.000 links/mês. A extensão usará is.gd como fallback automaticamente.
-- Se aparecer "API key inválida": entre em contato com o administrador para atualizar a chave no código
+- Se aparecer "Limite de links atingido": o plano gratuito do Dub.co permite 1.000 links/mês. A extensão usará is.gd como fallback automaticamente
+- Se aparecer "API key inválida": verifique se o arquivo `config.js` existe e contém uma key válida do Dub.co (ver Passo 2)
 - Se o Dub.co estiver fora do ar, a extensão usará o is.gd como fallback automaticamente
 - Links via is.gd não geram pré-visualização com foto no WhatsApp
+
+### Link sem preview com foto no WhatsApp
+- Verifique se o `config.js` está configurado corretamente (ver Passo 2)
+- Se o rodapé da extensão mostrar "is.gd (fallback)", significa que o Dub.co não foi usado — o is.gd não embute metadados OG
 
 ### Não consigo copiar
 - Certifique-se de que a página está em foco
