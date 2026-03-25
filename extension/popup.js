@@ -110,7 +110,7 @@ function updatePreview() {
 
   // Mostra qual encurtador foi usado
   const sourceLabel = {
-    mlabs: 'mla.bs',
+    dub: 'dub.sh',
     isgd: 'is.gd (fallback)',
     original: 'sem encurtar',
   };
@@ -181,12 +181,15 @@ async function prepareMessages() {
         continue;
       }
 
-      // Avisa se mLabs falhou e usou fallback
-      if (result.mlabsError) {
-        if (result.mlabsError === 'MLABS_NOT_LOGGED_IN' || result.mlabsError === 'MLABS_TOKEN_EXPIRED') {
-          showStatus('⚠️ Token mLabs expirado. Abra publish.mlabs.io e faça login, depois tente novamente. Usando is.gd como fallback.', 'warning');
-          await new Promise(r => setTimeout(r, 2000));
-        }
+      // Avisa se Dub.co falhou e usou fallback
+      if (result.dubError) {
+        const dubMessages = {
+          'DUB_RATE_LIMIT': '⚠️ Limite de links Dub.co atingido. Usando is.gd como fallback.',
+          'DUB_INVALID_KEY': '⚠️ API key do Dub.co inválida. Usando is.gd como fallback.',
+        };
+        const msg = dubMessages[result.dubError] || `⚠️ Dub.co indisponível. Usando is.gd como fallback.`;
+        showStatus(msg, 'warning');
+        await new Promise(r => setTimeout(r, 2000));
       }
 
       state.preparedMessages.push({

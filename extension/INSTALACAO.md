@@ -114,10 +114,10 @@ O processo é idêntico ao Chrome:
 - Verifique sua conexão com a internet
 - O site da Folha pode estar temporariamente fora do ar
 
-### Erro ao encurtar link / "Token mLabs expirado"
-- Abra [publish.mlabs.io](https://publish.mlabs.io) no mesmo navegador e faça login
-- O token do mLabs expira em ~1h; após relogar, tente novamente
-- Se o mLabs estiver fora do ar, a extensão usará o is.gd como fallback automaticamente
+### Erro ao encurtar link
+- Se aparecer "Limite de links atingido": o plano gratuito do Dub.co permite 1.000 links/mês. A extensão usará is.gd como fallback automaticamente.
+- Se aparecer "API key inválida": entre em contato com o administrador para atualizar a chave no código
+- Se o Dub.co estiver fora do ar, a extensão usará o is.gd como fallback automaticamente
 - Links via is.gd não geram pré-visualização com foto no WhatsApp
 
 ### Não consigo copiar

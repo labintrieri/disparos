@@ -132,23 +132,28 @@ function decodeHTMLEntities(text) {
 // === Processar Artigo ===
 async function processArticle(article) {
   try {
-    // 1. Busca a página real e extrai as linhas finas
-    const bullets = await extractBulletsFromPage(article.link);
+    // 1. Busca a página real e extrai linhas finas + metadados OG
+    const pageData = await extractPageData(article.link);
 
     // 2. Limpa e adiciona UTM à URL
     const cleanedUrl = cleanUrl(article.link);
 
-    // 3. Encurta a URL
-    const shortened = await shortenUrl(cleanedUrl);
+    // 3. Encurta a URL via Dub.co (com metadados OG para preview no WhatsApp)
+    const metadata = {
+      ogTitle: pageData.title || article.title,
+      ogDescription: pageData.description || '',
+      ogImage: pageData.ogImage || ''
+    };
+    const shortened = await shortenUrl(cleanedUrl, metadata);
 
     // 4. Monta a mensagem
-    const message = formatMessage(article.title, bullets, shortened.url);
+    const message = formatMessage(article.title, pageData.bullets, shortened.url);
 
     return {
       message,
       shortUrl: shortened.url,
       shortenerSource: shortened.source,
-      mlabsError: shortened.mlabsError || null
+      dubError: shortened.dubError || null
     };
 
   } catch (error) {
@@ -156,8 +161,9 @@ async function processArticle(article) {
   }
 }
 
-// === Buscar página e extrair linhas finas via tab injection ===
-async function extractBulletsFromPage(url) {
+// === Buscar página e extrair linhas finas + metadados OG via tab injection ===
+async function extractPageData(url) {
+  const empty = { title: '', bullets: [], description: '', ogImage: '' };
   let tabId = null;
   try {
     // Abre aba em background (não ativa)
@@ -179,18 +185,24 @@ async function extractBulletsFromPage(url) {
 
     // Pega o resultado do script injetado
     if (results && results[0] && results[0].result) {
-      return results[0].result.bullets || [];
+      const r = results[0].result;
+      return {
+        title: r.title || '',
+        bullets: r.bullets || [],
+        description: r.description || '',
+        ogImage: r.ogImage || ''
+      };
     }
 
-    return [];
+    return empty;
 
   } catch (error) {
-    console.error('Erro ao extrair bullets da página:', error.message);
+    console.error('Erro ao extrair dados da página:', error.message);
     // Garante que a aba seja fechada em caso de erro
     if (tabId) {
       try { await chrome.tabs.remove(tabId); } catch {}
     }
-    return [];
+    return empty;
   }
 }
 
@@ -239,41 +251,46 @@ function cleanUrl(url) {
   return `${cleaned}${separator}utm_source=whatsapp&utm_medium=social&utm_campaign=wppcfolhapol`;
 }
 
-// === Encurtar URL via mLabs ===
-async function shortenWithMlabs(url) {
-  const cookie = await chrome.cookies.get({
-    url: "https://publish.mlabs.io",
-    name: "authApiToken"
-  });
-
-  if (!cookie) throw new Error("MLABS_NOT_LOGGED_IN");
-
-  const token = decodeURIComponent(cookie.value);
-
-  const response = await fetch("https://core-api.mlabs.io/social/link/short", {
+// === Encurtar URL via Dub.co (com metadados OG) ===
+async function shortenWithDub(url, metadata) {
+  const response = await fetch("https://api.dub.co/links", {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "accept": "*/*",
-      "accept-version": "v1",
-      "current-profile": "3807480",
-      "current-timezone": "America/Sao_Paulo",
-      "origin": "https://publish.mlabs.io",
-      "Authorization": `Bearer ${token}`
+      "Authorization": "Bearer dub_GiAPxhx2fhctEMRvk5XrsXIe",
+      "Content-Type": "application/json"
     },
-    body: `link=${encodeURIComponent(url)}`
+    body: JSON.stringify({
+      url: url,
+      title: metadata.ogTitle || "",
+      description: metadata.ogDescription || "",
+      image: metadata.ogImage || "",
+      domain: "dub.sh"
+    })
   });
 
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("MLABS_TOKEN_EXPIRED");
+  // 409 = link já existe, Dub.co retorna o existente
+  if (response.status === 409) {
+    const data = await response.json();
+    if (data.shortLink) return data.shortLink;
+    if (data.error?.link?.shortLink) return data.error.link.shortLink;
+    throw new Error("DUB_CONFLICT");
+  }
+
+  if (response.status === 401) {
+    throw new Error("DUB_INVALID_KEY");
+  }
+
+  if (response.status === 429) {
+    throw new Error("DUB_RATE_LIMIT");
   }
 
   if (!response.ok) {
-    throw new Error(`mLabs HTTP ${response.status}`);
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`DUB_ERROR: ${error.error?.message || response.status}`);
   }
 
   const data = await response.json();
-  return data.short_link;
+  return data.shortLink;
 }
 
 // === Encurtar URL via is.gd (fallback) ===
@@ -292,34 +309,25 @@ async function shortenWithIsgd(url) {
     throw new Error('Invalid is.gd response');
   }
 
-  const finalUrl = shortUrl.trim();
-
-  // "Aquece" o link
-  try {
-    await fetch(finalUrl, { method: 'HEAD', mode: 'no-cors' });
-  } catch {
-    // Ignora erros do warmup
-  }
-
-  return finalUrl;
+  return shortUrl.trim();
 }
 
-// === Encurtar URL (mLabs com fallback is.gd) ===
-async function shortenUrl(url) {
-  // Tenta mLabs primeiro
+// === Encurtar URL (Dub.co com fallback is.gd) ===
+async function shortenUrl(url, metadata) {
+  // Tenta Dub.co primeiro
   try {
-    const shortUrl = await shortenWithMlabs(url);
-    return { url: shortUrl, source: 'mlabs' };
-  } catch (mlabsError) {
-    const errorCode = mlabsError.message;
+    const shortUrl = await shortenWithDub(url, metadata || {});
+    return { url: shortUrl, source: 'dub' };
+  } catch (dubError) {
+    const errorCode = dubError.message;
 
     // Tenta is.gd como fallback
     try {
       const shortUrl = await shortenWithIsgd(url);
-      return { url: shortUrl, source: 'isgd', mlabsError: errorCode };
+      return { url: shortUrl, source: 'isgd', dubError: errorCode };
     } catch {
       // Último recurso: URL original
-      return { url, source: 'original', mlabsError: errorCode };
+      return { url, source: 'original', dubError: errorCode };
     }
   }
 }
