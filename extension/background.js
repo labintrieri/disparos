@@ -195,6 +195,46 @@ function cleanUrl(url) {
   return `${cleaned}${separator}utm_source=whatsapp&utm_medium=social&utm_campaign=wppcfolhapol`;
 }
 
+// Decodifica o payload de um JWT token
+function decodeJWT(token) {
+  try {
+    const payload = token.split('.')[1];
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+  } catch {
+    return null;
+  }
+}
+
+// Busca o profile ID do mLabs a partir do token JWT ou da API
+async function getMlabsProfileId(token) {
+  // Tenta extrair do JWT
+  const jwt = decodeJWT(token);
+  if (jwt) {
+    const id = jwt.profileId || jwt.profile_id || jwt.currentProfile || jwt.current_profile;
+    if (id) return String(id);
+  }
+
+  // Fallback: busca da API de perfis
+  const response = await fetch("https://core-api.mlabs.io/user/profiles", {
+    headers: {
+      "accept": "application/json",
+      "accept-version": "v1",
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    // Pode ser um array de perfis ou um objeto
+    if (Array.isArray(data) && data.length > 0) {
+      return String(data[0].id || data[0].profileId || data[0].profile_id);
+    }
+    if (data.id) return String(data.id);
+  }
+
+  return null;
+}
+
 // === Encurtar URL via mLabs ===
 async function shortenWithMlabs(url) {
   const cookie = await chrome.cookies.get({
@@ -203,22 +243,28 @@ async function shortenWithMlabs(url) {
   });
 
   if (!cookie) {
-    throw new Error("Faça login no mLabs (publish.mlabs.io) e tente novamente.");
+    throw new Error("Faca login no mLabs (publish.mlabs.io) e tente novamente.");
   }
 
   const token = decodeURIComponent(cookie.value);
+  const profileId = await getMlabsProfileId(token);
+
+  const headers = {
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "accept": "*/*",
+    "accept-version": "v1",
+    "current-timezone": "America/Sao_Paulo",
+    "origin": "https://publish.mlabs.io",
+    "Authorization": `Bearer ${token}`
+  };
+
+  if (profileId) {
+    headers["current-profile"] = profileId;
+  }
 
   const response = await fetch("https://core-api.mlabs.io/social/link/short", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "accept": "*/*",
-      "accept-version": "v1",
-      "current-profile": "3807480",
-      "current-timezone": "America/Sao_Paulo",
-      "origin": "https://publish.mlabs.io",
-      "Authorization": `Bearer ${token}`
-    },
+    headers,
     body: `link=${encodeURIComponent(url)}`
   });
 
