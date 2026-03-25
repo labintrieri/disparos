@@ -300,6 +300,7 @@ async function shortenWithDub(url, metadata) {
     },
     body: JSON.stringify({
       url: url,
+      proxy: true,
       title: metadata.ogTitle || "",
       description: metadata.ogDescription || "",
       image: metadata.ogImage || "",
