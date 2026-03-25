@@ -258,13 +258,6 @@ async function shortenWithMlabs(url) {
   }
 
   const data = await response.json();
-
-  // Aquece o link para o mLabs cachear os metadados OG
-  try {
-    await fetch(data.short_link, { redirect: 'follow' });
-    await new Promise(r => setTimeout(r, 3000));
-  } catch {}
-
   return data.short_link;
 }
 
