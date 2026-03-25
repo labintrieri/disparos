@@ -292,7 +292,11 @@ async function shortenWithDub(url, metadata) {
   console.log('[Dub.co] Encurtando URL:', url);
   console.log('[Dub.co] API Key (primeiros 10 chars):', CONFIG.DUB_API_KEY.substring(0, 10) + '...');
 
-  const response = await fetch("https://api.dub.co/links", {
+  const apiUrl = CONFIG.DUB_WORKSPACE_ID
+    ? `https://api.dub.co/links?workspaceId=${CONFIG.DUB_WORKSPACE_ID}`
+    : "https://api.dub.co/links";
+
+  const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${CONFIG.DUB_API_KEY}`,
