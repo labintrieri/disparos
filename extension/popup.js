@@ -110,7 +110,7 @@ function updatePreview() {
 
   // Mostra qual encurtador foi usado
   const sourceLabel = {
-    dub: 'dub.sh',
+    mlabs: 'mLabs (mla.bs)',
     isgd: 'is.gd (fallback)',
     original: 'sem encurtar',
   };
@@ -198,14 +198,13 @@ async function prepareMessages() {
         continue;
       }
 
-      // Avisa se Dub.co falhou e usou fallback
-      if (result.dubError) {
-        const dubMessages = {
-          'DUB_RATE_LIMIT': '⚠️ Limite de links Dub.co atingido. Usando is.gd.',
-          'DUB_INVALID_KEY': '⚠️ API key do Dub.co inválida. Usando is.gd.',
-          'DUB_NO_KEY': '⚠️ API key do Dub.co não configurada. Usando is.gd.',
+      // Avisa se mLabs falhou e usou fallback
+      if (result.shortenerError) {
+        const errorMessages = {
+          'MLABS_NOT_LOGGED_IN': '⚠️ Faça login no mLabs e tente novamente. Usando is.gd.',
+          'MLABS_TOKEN_EXPIRED': '⚠️ Sessão do mLabs expirou. Faça login novamente. Usando is.gd.',
         };
-        const msg = dubMessages[result.dubError] || `⚠️ Dub.co erro: ${result.dubError}. Usando is.gd.`;
+        const msg = errorMessages[result.shortenerError] || `⚠️ mLabs erro: ${result.shortenerError}. Usando is.gd.`;
         showStatus(msg, 'warning');
         await new Promise(r => setTimeout(r, 3000));
       }

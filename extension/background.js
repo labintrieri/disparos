@@ -170,13 +170,8 @@ async function processArticle(article) {
     // 2. Limpa e adiciona UTM à URL
     const cleanedUrl = cleanUrl(article.link);
 
-    // 3. Encurta a URL via Dub.co (com metadados OG para preview no WhatsApp)
-    const metadata = {
-      ogTitle: pageData.title || article.title,
-      ogDescription: pageData.description || '',
-      ogImage: pageData.ogImage || ''
-    };
-    const shortened = await shortenUrl(cleanedUrl, metadata);
+    // 3. Encurta a URL
+    const shortened = await shortenUrl(cleanedUrl);
 
     // 4. Monta a mensagem
     const message = formatMessage(article.title, pageData.bullets, shortened.url);
@@ -185,7 +180,7 @@ async function processArticle(article) {
       message,
       shortUrl: shortened.url,
       shortenerSource: shortened.source,
-      dubError: shortened.dubError || null
+      shortenerError: shortened.error || null
     };
 
   } catch (error) {
@@ -283,63 +278,53 @@ function cleanUrl(url) {
   return `${cleaned}${separator}utm_source=whatsapp&utm_medium=social&utm_campaign=wppcfolhapol`;
 }
 
-// === Encurtar URL via Dub.co (com metadados OG) ===
-async function shortenWithDub(url, metadata) {
-  if (!CONFIG.DUB_API_KEY) {
-    throw new Error('DUB_NO_KEY: config.js não tem DUB_API_KEY');
-  }
-
-  console.log('[Dub.co] Encurtando URL:', url);
-  console.log('[Dub.co] API Key (primeiros 10 chars):', CONFIG.DUB_API_KEY.substring(0, 10) + '...');
-
-  const apiUrl = CONFIG.DUB_WORKSPACE_ID
-    ? `https://api.dub.co/links?workspaceId=${CONFIG.DUB_WORKSPACE_ID}`
-    : "https://api.dub.co/links";
-
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${CONFIG.DUB_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      url: url,
-      proxy: true,
-      title: metadata.ogTitle || "",
-      description: metadata.ogDescription || "",
-      image: metadata.ogImage || "",
-      domain: "dub.sh"
-    })
+// === Encurtar URL via mLabs (pega token do cookie) ===
+async function shortenWithMlabs(url) {
+  const cookie = await chrome.cookies.get({
+    url: "https://app.mlabs.com.br",
+    name: "authApiToken"
   });
 
-  console.log('[Dub.co] Status:', response.status);
+  // Tenta também o domínio antigo
+  const cookie2 = !cookie ? await chrome.cookies.get({
+    url: "https://publish.mlabs.io",
+    name: "authApiToken"
+  }) : null;
 
-  // 409 = link já existe, Dub.co retorna o existente
-  if (response.status === 409) {
-    const data = await response.json();
-    console.log('[Dub.co] 409 resposta:', JSON.stringify(data));
-    if (data.shortLink) return data.shortLink;
-    if (data.error?.link?.shortLink) return data.error.link.shortLink;
-    throw new Error("DUB_CONFLICT");
-  }
+  const authCookie = cookie || cookie2;
+  if (!authCookie) throw new Error("MLABS_NOT_LOGGED_IN");
 
-  if (response.status === 401) {
-    throw new Error("DUB_INVALID_KEY: API key inválida ou expirada");
-  }
+  const token = decodeURIComponent(authCookie.value);
+  console.log('[mLabs] Token encontrado, encurtando:', url);
 
-  if (response.status === 429) {
-    throw new Error("DUB_RATE_LIMIT: limite de requisições atingido");
+  const response = await fetch("https://core-api.mlabs.io/social/link/short", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "accept": "*/*",
+      "accept-version": "v1",
+      "current-timezone": "America/Sao_Paulo",
+      "origin": "https://app.mlabs.com.br",
+      "Authorization": `Bearer ${token}`
+    },
+    body: `link=${encodeURIComponent(url)}`
+  });
+
+  console.log('[mLabs] Status:', response.status);
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("MLABS_TOKEN_EXPIRED");
   }
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    console.error('[Dub.co] Erro resposta:', errorBody);
-    throw new Error(`DUB_ERROR (${response.status}): ${errorBody}`);
+    const body = await response.text().catch(() => '');
+    console.error('[mLabs] Erro:', body);
+    throw new Error(`MLABS_ERROR (${response.status}): ${body}`);
   }
 
   const data = await response.json();
-  console.log('[Dub.co] Sucesso:', data.shortLink);
-  return data.shortLink;
+  console.log('[mLabs] Sucesso:', JSON.stringify(data));
+  return data.short_link;
 }
 
 // === Encurtar URL via is.gd (fallback) ===
@@ -361,22 +346,22 @@ async function shortenWithIsgd(url) {
   return shortUrl.trim();
 }
 
-// === Encurtar URL (Dub.co com fallback is.gd) ===
-async function shortenUrl(url, metadata) {
-  // Tenta Dub.co primeiro
+// === Encurtar URL (mLabs > is.gd > original) ===
+async function shortenUrl(url) {
+  // 1. Tenta mLabs primeiro (melhor preview no WhatsApp)
   try {
-    const shortUrl = await shortenWithDub(url, metadata || {});
-    return { url: shortUrl, source: 'dub' };
-  } catch (dubError) {
-    const errorCode = dubError.message;
+    const shortUrl = await shortenWithMlabs(url);
+    return { url: shortUrl, source: 'mlabs' };
+  } catch (mlabsError) {
+    console.warn('[Shortener] mLabs falhou:', mlabsError.message);
 
-    // Tenta is.gd como fallback
+    // 2. Tenta is.gd como fallback
     try {
       const shortUrl = await shortenWithIsgd(url);
-      return { url: shortUrl, source: 'isgd', dubError: errorCode };
+      return { url: shortUrl, source: 'isgd', error: mlabsError.message };
     } catch {
-      // Último recurso: URL original
-      return { url, source: 'original', dubError: errorCode };
+      // 3. Último recurso: URL original
+      return { url, source: 'original', error: mlabsError.message };
     }
   }
 }
