@@ -6,7 +6,7 @@ Extensão para Google Chrome que automatiza a preparação de mensagens para Wha
 
 1. Lê o feed RSS público da Folha para listar as matérias mais recentes de uma editoria
 2. O operador seleciona quais matérias deseja disparar
-3. Para cada matéria selecionada, a extensão abre a página em segundo plano, extrai título e subtítulos (linhas finas), encurta o link via is.gd e formata a mensagem no padrão WhatsApp
+3. Para cada matéria selecionada, a extensão abre a página em segundo plano, extrai título e subtítulos (linhas finas), encurta o link via mLabs (mla.bs) e formata a mensagem no padrão WhatsApp
 4. O operador revisa, edita se necessário, e copia para a área de transferência
 
 O resultado é uma mensagem pronta como:
@@ -15,7 +15,7 @@ O resultado é uma mensagem pronta como:
 *PSD, União e PL ensaiam aliança para derrotar candidato de Motta e Lula ao TCU*
 • _O petista Odair Cunha é apoiado pelo presidente da Câmara, como parte de acordo com o PT_
 • _Ala do centrão diz não ter compromisso com entendimento e busca bolsonaristas_
-https://is.gd/xxxxx
+https://mla.bs/1daa067a
 ```
 
 ## Instalação
@@ -28,6 +28,11 @@ Resumo:
 2. Ativar "Modo do desenvolvedor"
 3. Clicar em "Carregar sem compactação"
 4. Selecionar a pasta `extension/`
+
+## Pré-requisitos
+
+- **mLabs**: Para que os links encurtados gerem pré-visualização com foto no WhatsApp, o operador deve estar logado em [publish.mlabs.io](https://publish.mlabs.io) no mesmo navegador. O token expira em ~1h; se expirar, basta abrir o mLabs e fazer login novamente.
+- Se o mLabs não estiver disponível, a extensão usa automaticamente o is.gd como fallback.
 
 ## Como usar
 
@@ -60,7 +65,7 @@ A extensão avança automaticamente para a próxima matéria após a cópia.
 | Arquivo | Função |
 |---|---|
 | `manifest.json` | Declaração da extensão (Manifest V3), permissões e pontos de entrada |
-| `background.js` | Service worker. Busca o feed RSS, coordena a extração de cada página, encurta URLs |
+| `background.js` | Service worker. Busca o feed RSS, coordena a extração de cada página, encurta URLs via mLabs (com fallback is.gd) |
 | `content-extractor.js` | Script injetado nas páginas da Folha para extrair título e subtítulos via DOM |
 | `popup.html` | Interface do operador |
 | `popup.js` | Lógica da interface: listagem, seleção, prévia e cópia |
@@ -91,7 +96,7 @@ Para cada matéria selecionada, sequencialmente:
    4. content-extractor.js consulta o DOM da página e retorna os subtítulos
    5. background.js fecha a aba imediatamente
    6. background.js limpa a URL e adiciona parâmetros UTM de rastreamento
-   7. background.js encurta a URL via API do is.gd
+   7. background.js encurta a URL via API do mLabs (mla.bs), com fallback para is.gd
    8. background.js monta a mensagem formatada
         |
         v
@@ -109,10 +114,13 @@ Mensagem copiada para a área de transferência via navigator.clipboard.writeTex
 | `clipboardWrite` | Copiar mensagem formatada para a área de transferência |
 | `scripting` | Injetar o content-extractor.js nas páginas da Folha para leitura do DOM |
 | `tabs` | Criar e fechar abas em segundo plano durante a extração |
+| `cookies` | Ler o token de autenticação do mLabs (cookie `authApiToken` do domínio `.mlabs.io`) |
 | `host: *.folha.uol.com.br` | Acessar feeds RSS e páginas de matérias da Folha |
-| `host: is.gd` | Chamar a API de encurtamento de URLs |
+| `host: core-api.mlabs.io` | Chamar a API de encurtamento de URLs do mLabs |
+| `host: *.mlabs.io` | Leitura de cookies de autenticação do mLabs |
+| `host: is.gd` | Chamar a API de encurtamento de URLs (fallback) |
 
-A extensão **não solicita** permissões amplas como `<all_urls>`, `webRequest`, `history`, `bookmarks` ou `cookies`. O acesso é restrito aos dois domínios listados.
+A extensão **não solicita** permissões amplas como `<all_urls>`, `webRequest` ou `history`. O acesso a cookies é restrito ao domínio `.mlabs.io` para leitura do token de autenticação.
 
 ### Extração de subtítulos (content-extractor.js)
 
@@ -149,7 +157,8 @@ Isso permite rastrear no analytics da Folha o tráfego originado por esses dispa
 |---|---|---|
 | feeds.folha.uol.com.br | Leitura do feed RSS (público, sem autenticação) | Nenhum dado do operador |
 | www1.folha.uol.com.br | Carregamento das páginas de matérias para extração | Cookies do navegador do operador (sessão da Folha) |
-| is.gd | Encurtamento de URL | Apenas a URL da matéria |
+| core-api.mlabs.io | Encurtamento de URL (primário) | URL da matéria + token JWT do mLabs |
+| is.gd | Encurtamento de URL (fallback) | Apenas a URL da matéria |
 
 ---
 
@@ -157,10 +166,10 @@ Isso permite rastrear no analytics da Folha o tráfego originado por esses dispa
 
 - A extensão **não coleta, armazena ou transmite dados do operador**
 - Não há backend, banco de dados ou servidor próprio
-- As únicas requisições externas são para `folha.uol.com.br` (feed e páginas) e `is.gd` (encurtamento)
+- As requisições externas são para `folha.uol.com.br` (feed e páginas), `core-api.mlabs.io` (encurtamento primário) e `is.gd` (encurtamento fallback)
+- O token do mLabs é lido diretamente do cookie do navegador a cada uso — nunca é armazenado pela extensão
 - As mensagens existem apenas na memória local do navegador enquanto o popup está aberto. Ao fechar, são descartadas
-- A extensão não tem acesso a nenhum outro site além dos dois declarados no manifest
-- Nenhum dado de navegação, histórico ou credencial é acessado
+- Nenhum dado de navegação ou histórico é acessado
 
 ### 6. Distribuição 
 A extensão não está publicada na Chrome Web Store. É instalada manualmente via modo desenvolvedor ("Carregar sem compactação"). Isso significa:
@@ -177,7 +186,9 @@ A extensão não está publicada na Chrome Web Store. É instalada manualmente v
 - A mensagem é copiada para a área de transferência; o envio no WhatsApp é manual (colar e enviar)
 - O feed RSS retorna as matérias mais recentes, sem controle de data ou busca por palavra-chave
 - Limite de 15 matérias por escaneamento
-- O link encurtado via is.gd não funciona para disparos feitos pelo navegador Edge. Funciona no Chrome e Mozila.
+- O encurtamento via mLabs requer login ativo em publish.mlabs.io (o token JWT expira em ~1h)
+- Se o token expirar, a extensão usa is.gd como fallback (mas links is.gd não geram pré-visualização com foto no WhatsApp)
+- O link encurtado via is.gd não funciona para disparos feitos pelo navegador Edge. Funciona no Chrome e Mozilla.
 
 ## Estrutura de arquivos
 

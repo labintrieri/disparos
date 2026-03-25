@@ -139,12 +139,17 @@ async function processArticle(article) {
     const cleanedUrl = cleanUrl(article.link);
 
     // 3. Encurta a URL
-    const shortUrl = await shortenUrl(cleanedUrl);
+    const shortened = await shortenUrl(cleanedUrl);
 
     // 4. Monta a mensagem
-    const message = formatMessage(article.title, bullets, shortUrl);
+    const message = formatMessage(article.title, bullets, shortened.url);
 
-    return { message, shortUrl };
+    return {
+      message,
+      shortUrl: shortened.url,
+      shortenerSource: shortened.source,
+      mlabsError: shortened.mlabsError || null
+    };
 
   } catch (error) {
     return { error: error.message };
@@ -234,39 +239,88 @@ function cleanUrl(url) {
   return `${cleaned}${separator}utm_source=whatsapp&utm_medium=social&utm_campaign=wppcfolhapol`;
 }
 
-// === Encurtar URL ===
-async function shortenUrl(url) {
+// === Encurtar URL via mLabs ===
+async function shortenWithMlabs(url) {
+  const cookie = await chrome.cookies.get({
+    url: "https://publish.mlabs.io",
+    name: "authApiToken"
+  });
+
+  if (!cookie) throw new Error("MLABS_NOT_LOGGED_IN");
+
+  const token = decodeURIComponent(cookie.value);
+
+  const response = await fetch("https://core-api.mlabs.io/social/link/short", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "accept": "*/*",
+      "accept-version": "v1",
+      "current-profile": "3807480",
+      "current-timezone": "America/Sao_Paulo",
+      "origin": "https://publish.mlabs.io",
+      "Authorization": `Bearer ${token}`
+    },
+    body: `link=${encodeURIComponent(url)}`
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("MLABS_TOKEN_EXPIRED");
+  }
+
+  if (!response.ok) {
+    throw new Error(`mLabs HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.short_link;
+}
+
+// === Encurtar URL via is.gd (fallback) ===
+async function shortenWithIsgd(url) {
+  const response = await fetch(
+    `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
+  );
+
+  if (!response.ok) {
+    throw new Error('is.gd error');
+  }
+
+  const shortUrl = await response.text();
+
+  if (!shortUrl.startsWith('http')) {
+    throw new Error('Invalid is.gd response');
+  }
+
+  const finalUrl = shortUrl.trim();
+
+  // "Aquece" o link
   try {
-    // Usa is.gd
-    const response = await fetch(
-      `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
-    );
-
-    if (!response.ok) {
-      throw new Error('is.gd error');
-    }
-
-    const shortUrl = await response.text();
-
-    if (shortUrl.startsWith('http')) {
-      const finalUrl = shortUrl.trim();
-
-      // "Aquece" o link: faz uma requisição para forçar o is.gd a
-      // carregar os metadados Open Graph da página de destino
-      try {
-        await fetch(finalUrl, { method: 'HEAD', mode: 'no-cors' });
-      } catch {
-        // Ignora erros do warmup
-      }
-
-      return finalUrl;
-    }
-
-    throw new Error('Invalid response');
-
+    await fetch(finalUrl, { method: 'HEAD', mode: 'no-cors' });
   } catch {
-    // Fallback: retorna URL original (sem encurtar)
-    return url;
+    // Ignora erros do warmup
+  }
+
+  return finalUrl;
+}
+
+// === Encurtar URL (mLabs com fallback is.gd) ===
+async function shortenUrl(url) {
+  // Tenta mLabs primeiro
+  try {
+    const shortUrl = await shortenWithMlabs(url);
+    return { url: shortUrl, source: 'mlabs' };
+  } catch (mlabsError) {
+    const errorCode = mlabsError.message;
+
+    // Tenta is.gd como fallback
+    try {
+      const shortUrl = await shortenWithIsgd(url);
+      return { url: shortUrl, source: 'isgd', mlabsError: errorCode };
+    } catch {
+      // Último recurso: URL original
+      return { url, source: 'original', mlabsError: errorCode };
+    }
   }
 }
 

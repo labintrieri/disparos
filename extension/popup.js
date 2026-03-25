@@ -107,6 +107,17 @@ function updatePreview() {
   elements.previewCounter.textContent = `${state.currentMessageIndex + 1} de ${state.preparedMessages.length}`;
   elements.previewMessage.value = msg.message;
   elements.copyFeedback.classList.add('hidden');
+
+  // Mostra qual encurtador foi usado
+  const sourceLabel = {
+    mlabs: 'mla.bs',
+    isgd: 'is.gd (fallback)',
+    original: 'sem encurtar',
+  };
+  const footerEl = document.querySelector('.footer small');
+  if (footerEl) {
+    footerEl.textContent = `Link encurtado via ${sourceLabel[msg.shortenerSource] || 'desconhecido'}`;
+  }
 }
 
 // === Funções de Dados ===
@@ -170,10 +181,19 @@ async function prepareMessages() {
         continue;
       }
 
+      // Avisa se mLabs falhou e usou fallback
+      if (result.mlabsError) {
+        if (result.mlabsError === 'MLABS_NOT_LOGGED_IN' || result.mlabsError === 'MLABS_TOKEN_EXPIRED') {
+          showStatus('⚠️ Token mLabs expirado. Abra publish.mlabs.io e faça login, depois tente novamente. Usando is.gd como fallback.', 'warning');
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
       state.preparedMessages.push({
         article: article,
         message: result.message,
         shortUrl: result.shortUrl,
+        shortenerSource: result.shortenerSource || 'unknown',
       });
     }
 

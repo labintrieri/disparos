@@ -114,9 +114,11 @@ O processo é idêntico ao Chrome:
 - Verifique sua conexão com a internet
 - O site da Folha pode estar temporariamente fora do ar
 
-### Erro ao encurtar link
-- O serviço is.gd pode estar temporariamente indisponível
-- A extensão usará o link original como fallback
+### Erro ao encurtar link / "Token mLabs expirado"
+- Abra [publish.mlabs.io](https://publish.mlabs.io) no mesmo navegador e faça login
+- O token do mLabs expira em ~1h; após relogar, tente novamente
+- Se o mLabs estiver fora do ar, a extensão usará o is.gd como fallback automaticamente
+- Links via is.gd não geram pré-visualização com foto no WhatsApp
 
 ### Não consigo copiar
 - Certifique-se de que a página está em foco

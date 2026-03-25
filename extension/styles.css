@@ -136,6 +136,11 @@ body {
   color: #34a853;
 }
 
+.status.warning {
+  color: #e37400;
+  background: #fef7e0;
+}
+
 /* Articles Section */
 #articles-section {
   flex: 1;
