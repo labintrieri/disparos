@@ -122,6 +122,24 @@ function updatePreview() {
 
 // === Funções de Dados ===
 
+// Envia mensagem ao background com timeout
+function sendMessageWithTimeout(message, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Tempo esgotado. Verifique se a extensão está ativa em chrome://extensions'));
+    }, timeoutMs);
+
+    chrome.runtime.sendMessage(message, (response) => {
+      clearTimeout(timer);
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 async function scanFeed() {
   const feedName = elements.feed.value;
   const feedUrl = FEEDS[feedName];
@@ -130,14 +148,13 @@ async function scanFeed() {
   elements.articlesSection.classList.add('hidden');
 
   try {
-    // Usa o background script para fazer o fetch (evita CORS)
-    const articles = await chrome.runtime.sendMessage({
+    const articles = await sendMessageWithTimeout({
       action: 'fetchFeed',
       url: feedUrl,
     });
 
-    if (articles.error) {
-      throw new Error(articles.error);
+    if (!articles || articles.error) {
+      throw new Error((articles && articles.error) || 'Sem resposta do background');
     }
 
     state.articles = articles;
@@ -171,10 +188,10 @@ async function prepareMessages() {
       showStatus(`⏳ Buscando ${i + 1}/${selectedArticles.length}: ${article.title.substring(0, 30)}...`, 'loading');
 
       // Busca detalhes da matéria e encurta o link
-      const result = await chrome.runtime.sendMessage({
+      const result = await sendMessageWithTimeout({
         action: 'processArticle',
         article: article,
-      });
+      }, 30000);
 
       if (result.error) {
         console.error('Erro ao processar:', result.error);

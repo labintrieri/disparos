@@ -12,7 +12,8 @@
   "host_permissions": [
     "https://*.folha.uol.com.br/*",
     "https://is.gd/*",
-    "https://api.dub.co/*"
+    "https://api.dub.co/*",
+    "https://api.allorigins.win/*"
   ],
   "action": {
     "default_popup": "popup.html",
