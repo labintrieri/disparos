@@ -1,8 +1,17 @@
 // Service Worker - processa requests em background
 // Usa tabs + content script injection para extrair linhas finas das páginas
 
-// Carrega configuração com API keys (config.js não é commitado no repo)
-importScripts('config.js');
+// Carrega configuração com API keys (config.js é opcional)
+try {
+  importScripts('config.js');
+} catch {
+  // config.js não existe - usa valores padrão
+}
+
+// Garante que CONFIG existe mesmo sem config.js
+if (typeof CONFIG === 'undefined') {
+  var CONFIG = {};
+}
 
 // Escuta mensagens do popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -278,6 +287,10 @@ function cleanUrl(url) {
 
 // === Encurtar URL via Dub.co (com metadados OG) ===
 async function shortenWithDub(url, metadata) {
+  if (!CONFIG.DUB_API_KEY) {
+    throw new Error('DUB_NO_KEY');
+  }
+
   const response = await fetch("https://api.dub.co/links", {
     method: "POST",
     headers: {
