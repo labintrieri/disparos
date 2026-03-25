@@ -7,11 +7,14 @@
     "activeTab",
     "clipboardWrite",
     "scripting",
-    "tabs"
+    "tabs",
+    "cookies"
   ],
   "host_permissions": [
     "https://*.folha.uol.com.br/*",
-    "https://is.gd/*"
+    "https://is.gd/*",
+    "https://core-api.mlabs.io/*",
+    "https://*.mlabs.io/*"
   ],
   "action": {
     "default_popup": "popup.html",
