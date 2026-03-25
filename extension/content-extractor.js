@@ -70,10 +70,14 @@
   // Limita a 2 bullets
   bullets = bullets.slice(0, 2);
 
+  // Extrai imagem OG
+  const ogImage = (q('meta[property="og:image"]') || {}).content || '';
+
   // Retorna os dados extraídos
   return {
     title: title,
     bullets: bullets,
-    description: ogDescription
+    description: ogDescription,
+    ogImage: ogImage
   };
 })();

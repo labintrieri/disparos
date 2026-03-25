@@ -1,20 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Disparos Folha",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Scanner de matérias da Folha de S.Paulo para WhatsApp",
   "permissions": [
     "activeTab",
     "clipboardWrite",
     "scripting",
-    "tabs",
-    "cookies"
+    "tabs"
   ],
   "host_permissions": [
     "https://*.folha.uol.com.br/*",
     "https://is.gd/*",
-    "https://core-api.mlabs.io/*",
-    "https://*.mlabs.io/*"
+    "https://api.dub.co/*"
   ],
   "action": {
     "default_popup": "popup.html",
